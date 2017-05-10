@@ -1,0 +1,5 @@
+set(URAnalysis_INCLUDE_DIRS $ENV{ATINCLUDE}/AnalysisTool)
+find_library(URAnalysis_LIBRARY_A NAMES AnalysisTool HINTS $ENV{ATLIB})
+find_library(URAnalysis_LIBRARY_B NAMES AnalysisSupport HINTS $ENV{ATLIB})
+set(URAnalysis_LIBRARIES ${URAnalysis_LIBRARY_A} ${URAnalysis_LIBRARY_B})
+MESSAGE(STATUS "Looking for UR... ${URAnalysis_LIBRARIES}")

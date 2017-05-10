@@ -1,0 +1,32 @@
+Installation
+
+requirements: ROOT
+
+In source directory do:
+
+mkdir build
+cd build
+cmake -DCMAKE_INSTALL_PREFIX=/where/to/install ..
+make 
+make install
+
+
+Running:
+
+--step 1
+modify the exaple configuration file tpcf_fast.cfg 
+
+correlation_fast njob totjob config.cfg
+
+where njob is the job number and totjob is the total number of jobs you want to submit: 0 <= njob < totjob
+The maximum nuber of available jobs depends on the number of regions defined in the .cfg: totjob < 5*theta_regions*phi_regions
+
+--step2
+use hadd to combine the output files:
+hadd combined.root [file_out]_*.root
+
+correlation_fast_step2 combined.root tpcf_out.root
+
+
+
+
