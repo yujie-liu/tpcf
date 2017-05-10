@@ -37,7 +37,6 @@ int main(int argc, char** argv)
 	cout << "start RR" << endl;
 	for(int ang = 0 ; ang < RR_alpha->getNumBins() ; ++ang)
 	{
-		cout << ang <<"/"<< RR_alpha->getNumBins() << endl;
 		if(RR_alpha->getBinValue(ang) == 0) continue;
 		double cab = Cos(RR_alpha->getBinMeanX(ang));
 		for(int ar = 0 ; ar < RR_r->getNumBins() ; ++ar)
@@ -72,7 +71,19 @@ int main(int argc, char** argv)
 
 	TFile* fin = TFile::Open(filein.c_str());
 	TH1D* htime = dynamic_cast<TH1D*>(fin->Get("htime"));
+	TH1D* hnorm = dynamic_cast<TH1D*>(fin->Get("hnorm"));
 	TFile* fout = TFile::Open(fileout.c_str(), "recreate");
+	TH1D* htpcf = new TH1D("tpcf", "tpcf", corDD->getNumBins(), corDD->getXMin(), corDD->getXMax());
+	for(int b = 0 ; b < htpcf->GetNbinsX() ; ++b)
+	{
+		if(corRR->getBinValue(b) > 0)
+		{
+			double rr = corRR->getBinValue(b)/hnorm->GetBinContent(1);
+			double rd = corRD->getBinValue(b)/hnorm->GetBinContent(2);
+			double dd = corDD->getBinValue(b)/hnorm->GetBinContent(3);
+			htpcf->SetBinContent(b+1, (dd-2*rd+rr)/rr);
+		}
+	}
 	corDD->writeTH1D("DD");
 	corRD->writeTH1D("RD");
 	corRR->writeTH1D("RR");

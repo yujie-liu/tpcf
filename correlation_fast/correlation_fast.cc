@@ -119,12 +119,17 @@ class Correlations
 
 		Map2D<Galaxy>* D;
 		Map2D<Galaxy_ang>* R;
+		double dw = 0.;
+		double dww = 0.;
+		double rw = 0.;
+		double rww = 0.;
 
 		Hist1D* RR_r = nullptr;	
 		Hist1D* RR_alpha = nullptr;
 		Hist2D* DR_alpha_r = nullptr;
 		Hist1D* DD_cor = nullptr;
 		TH1D* htime = nullptr;
+		TH1D* hnorm = nullptr;
 
 		void LoadMCTree(string filename)
 		{
@@ -135,11 +140,15 @@ class Correlations
 			TTree* tr = dynamic_cast<TTree*>(tf->Get("data_pol"));
 			tr->SetBranchAddress("position_pol", &pos);
 			Hist2D MC_phi_theta(phibins_, phimin_, phimax_, thetabins_, thetamin_, thetamax_);
+			rw = 0.;
+			rww = 0.;
 			for(int n = 0 ; n < tr->GetEntries() ; ++n)
 			{
 				tr->GetEntry(n);
 				MC_phi_theta.fill(pos.phi, pos.theta);
 				RR_r->fill(pos.r, pos.w);
+				rw += pos.w;
+				rww += pos.w*pos.w;
 			}
 			for(int b = 0 ; b < MC_phi_theta.getNumBins() ; ++b)
 			{
@@ -163,10 +172,14 @@ class Correlations
 			TFile* tf = TFile::Open(filename.c_str());
 			TTree* tr = dynamic_cast<TTree*>(tf->Get("data_pol"));
 			tr->SetBranchAddress("position_pol", &pos);
+			dw = 0.;
+			dww = 0;
 			for(int n = 0 ; n < tr->GetEntries() ; ++n)
 			{
 				tr->GetEntry(n);
 				D->fill(pos.phi, pos.theta, pos);
+				dw += pos.w;
+				dww += pos.w*pos.w;
 			}
 			tf->Close();
 		}
@@ -305,6 +318,7 @@ class Correlations
 		DD_cor = new Hist1D(sbins_, smin_, smax_);
 
 		htime = new TH1D("htime", "htime", 10, 0, 10);
+		hnorm = new TH1D("hnorm", "hnorm", 3, 0, 3);
 
 		LoadMCTree(cfg.Get<string>("file_random"));
 		LoadDATree(cfg.Get<string>("file_data"));
@@ -318,6 +332,7 @@ class Correlations
 			DR_alpha_r->writeTH2D("DR_alpha_r");
 			DD_cor->writeTH1D("DD_cor");
 			htime->Write("htime");
+			hnorm->Write("hnorm");
 			fout->Write();
 			fout->Close();
 		}
@@ -327,7 +342,13 @@ class Correlations
 			stringstream ss;
 			ss << outfile_ << "_" << job_n << "_" << job_tot << ".root";
 			outfile_ = ss.str();
-
+			if(job_n == 0)
+			{
+				hnorm->SetBinContent(1, (rw*rw-rww)*0.5);
+				hnorm->SetBinContent(2, rw*dw);
+				hnorm->SetBinContent(3, (dw*dw-dww)*0.5);
+				cout << "Normalization RR = " <<  hnorm->GetBinContent(1) << ", RD = " << hnorm->GetBinContent(2) << ", DD = " << hnorm->GetBinContent(3) << endl; 
+			}
 			int av_jobs = R->getNumBins()*5;
 			cout << "Job number: " << job_n << ", total number of jobs: " << job_tot << ", available jobs: " << av_jobs << endl;
 			pair<int, int > range(getjobrange(job_n, job_tot, av_jobs));
