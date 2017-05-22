@@ -21,9 +21,15 @@ class Hist2D
 		vector<double> data_x;
 		vector<double> data_y;
 	public:
-		Hist2D(size_t nxbins, double xmin, double xmax, size_t nybins, double ymin, double ymax) : nxbins_(nxbins), nybins_(nybins), xmin_(xmin), xmax_(xmax), ymin_(ymin), ymax_(ymax), data_n(nxbins*nybins, 0.), data_w(nxbins*nybins, 0.), data_w2(nxbins*nybins, 0.), data_x(nxbins*nybins, 0.), data_y(nxbins*nybins, 0.)
-	{
-	}
+		Hist2D(size_t nxbins, double xmin, double xmax,
+           size_t nybins, double ymin, double ymax)
+           :
+           nxbins_(nxbins), nybins_(nybins), xmin_(xmin), xmax_(xmax), ymin_(ymin), ymax_(ymax),
+           data_n(nxbins*nybins, 0.), data_w(nxbins*nybins, 0.), data_w2(nxbins*nybins, 0.),
+           data_x(nxbins*nybins, 0.), data_y(nxbins*nybins, 0.)
+	  {
+	  }
+
 		int getXBin(double x) const {return (x-xmin_)*nxbins_/(xmax_ - xmin_);}
 		int getYBin(double y) const {return (y-ymin_)*nybins_/(ymax_ - ymin_);}
 		int getBin(double x, double y){return getXBin(x) + nxbins_ * getYBin(y);}

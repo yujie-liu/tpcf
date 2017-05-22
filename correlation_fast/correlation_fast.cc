@@ -20,18 +20,22 @@ struct Galaxy
 {
 	double phi;
 	double theta;
-	double r;
+	double r;       // change to z, allowing new cosmology
 	double w;
 };
 
-
+// Note: assumes flat space. Would want to replace with
+// Dc, Dm to get distance given z and a particular cosmology
 inline double dist(const Galaxy& A, const Galaxy& B)
 {
-	double C = Cos(A.phi)*Sin(A.theta) * Cos(B.phi)*Sin(B.theta) + Sin(A.phi)*Sin(A.theta) * Sin(B.phi)*Sin(B.theta) + Cos(A.theta) * Cos(B.theta);
+	double C = Cos(A.phi)*Sin(A.theta) * Cos(B.phi)*Sin(B.theta) +
+             Sin(A.phi)*Sin(A.theta) * Sin(B.phi)*Sin(B.theta) +
+             Cos(A.theta) * Cos(B.theta);
 	return Sqrt(A.r*A.r + B.r*B.r - 2.*B.r*A.r*C);
 }
 
-
+// Angular map for galaxy positions. Hard-codes rectangular bins
+// in theta and phi.
 template< typename T > class Map2D
 {
 	private:
@@ -88,6 +92,8 @@ template< typename T > class Map2D
 		}
 };
 
+// Galaxy 2D angular position and weight, using
+// direction cosines of theta and phi
 struct Galaxy_ang
 {
 	double w;
@@ -142,14 +148,23 @@ class Correlations
 			Hist2D MC_phi_theta(phibins_, phimin_, phimax_, thetabins_, thetamin_, thetamax_);
 			rw = 0.;
 			rww = 0.;
+
+      // Loop over entries in TTree (theta, phi, r, w in each record)
 			for(int n = 0 ; n < tr->GetEntries() ; ++n)
 			{
 				tr->GetEntry(n);
+        // Fill 2D distribution.
 				MC_phi_theta.fill(pos.phi, pos.theta);
+
+        // Fill radial distribution with weights.
 				RR_r->fill(pos.r, pos.w);
+
+        // Track weight sums and sum^2
 				rw += pos.w;
 				rww += pos.w*pos.w;
 			}
+
+      // Create 2D map with the mean positions and weights (random)
 			for(int b = 0 ; b < MC_phi_theta.getNumBins() ; ++b)
 			{
 				if(MC_phi_theta.getBinValue(b) != 0.)
@@ -174,6 +189,8 @@ class Correlations
 			tr->SetBranchAddress("position_pol", &pos);
 			dw = 0.;
 			dww = 0;
+
+      // Store data galaxy positions, weights, and weight sums
 			for(int n = 0 ; n < tr->GetEntries() ; ++n)
 			{
 				tr->GetEntry(n);
@@ -187,10 +204,15 @@ class Correlations
 		void calculateRR(int bina, int binb)
 		{
 			cout << "Start RR " << bina << " " << binb << endl;
+
+      // Correlations in two different random bins
 			if(bina != binb)
 			{
 				const vector<Galaxy_ang>& va = R->getBinValue(bina);
 				const vector<Galaxy_ang>& vb = R->getBinValue(binb);
+
+        // Compute histogram of galaxy-galaxy angular distance,
+        // weighted by galaxy weights.
 				for(const Galaxy_ang& ga : va)
 				{
 					for(const Galaxy_ang& gb : vb)
@@ -202,6 +224,7 @@ class Correlations
 					}
 				}
 			}
+      // Correlations within the same bin
 			else
 			{
 				const vector<Galaxy_ang>& va = R->getBinValue(bina);
@@ -237,6 +260,9 @@ class Correlations
 					double dist = vx *  gb.cphi*gb.stheta;
 					dist += vy *  gb.sphi*gb.stheta;
 					dist += vz *  gb.ctheta;
+
+          // Note: calculation as a function of r assumes a
+          // cosmology. Replace with z?
 					DR_alpha_r->fill(ga.r, ACos(dist), ga.w*gb.w);	
 				}
 			}
@@ -254,6 +280,8 @@ class Correlations
 				{
 					for(const Galaxy& gb : vb)
 					{
+            // 1D histogram of DD as a function of 3D separation.
+            // Note: distance calculation assumes flat space.
 						DD_cor->fill(dist(ga,gb), ga.w*gb.w);
 					}
 				}
@@ -265,12 +293,15 @@ class Correlations
 				{   
 					for(size_t y = 0 ; y < x ; ++y)
 					{   
+            // 1D histogram of DD as a function of 3D separation.
+            // Note: distance calculation assumes flat space.
 						DD_cor->fill(dist(va[x],va[y]), va[x].w*va[y].w);
 					}
 				}
 			}
 		}
 
+    // Parallel job management
 		pair<int, int > getjobrange(int job_n, int job_tot, int totev)
 		{   
 			int nev = 0;

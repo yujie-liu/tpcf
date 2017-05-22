@@ -35,21 +35,30 @@ int main(int argc, char** argv)
 	
 	//RR
 	cout << "start RR" << endl;
+  // Loop over angular bins
 	for(int ang = 0 ; ang < RR_alpha->getNumBins() ; ++ang)
 	{
 		if(RR_alpha->getBinValue(ang) == 0) continue;
 		double cab = Cos(RR_alpha->getBinMeanX(ang));
+    // Integrate over radial distribution along one axis
 		for(int ar = 0 ; ar < RR_r->getNumBins() ; ++ar)
 		{
 			if(RR_r->getBinValue(ar) == 0.) continue;
 			double Ar = RR_r->getBinMeanX(ar);
+      // Integrate over radial distribution along other axis
 			for(int br = 0 ; br <= ar ; ++br)
 			{
 				if(RR_r->getBinValue(br) == 0.) continue;
 				double Br = RR_r->getBinMeanX(br);
 				double f = 2.;
 				if(ar == br) {f = 1.;}
-				corRR->fill(Sqrt(Ar*Ar + Br*Br - 2.*Ar*Br*cab), f*RR_alpha->getBinValue(ang)*RR_r->getBinValue(br)*RR_r->getBinValue(ar));
+        // Note: s calculation below ignores curvature, assumes isotropy
+        // To do:
+        //  1) Compute Az, Bz in terms of redshifts, not precomputed radial dist
+        //  2) Convert Az, Bz to Ar, Br assuming a particular cosmology
+        //  3) Calculate distances using formulas 6-8 in the MNRAS paper
+				corRR->fill(Sqrt(Ar*Ar + Br*Br - 2.*Ar*Br*cab),
+                    f*RR_alpha->getBinValue(ang)*RR_r->getBinValue(br)*RR_r->getBinValue(ar));
 			}
 		}
 	}
@@ -65,7 +74,9 @@ int main(int argc, char** argv)
 		{
 			if(RR_r->getBinValue(br) == 0.) continue;
 			double Br = RR_r->getBinMeanX(br);
-			corRD->fill(Sqrt(Ar*Ar + Br*Br - 2.*Ar*Br*cab), DR_alpha_r->getBinValue(b)*RR_r->getBinValue(br));
+      // Note: s calculation ignores curvature and assumes isotropy
+			corRD->fill(Sqrt(Ar*Ar + Br*Br - 2.*Ar*Br*cab),
+                  DR_alpha_r->getBinValue(b)*RR_r->getBinValue(br));
 		}
 	}
 
