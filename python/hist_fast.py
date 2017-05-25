@@ -27,7 +27,7 @@ class Hist1D:
         xedges (:obj:`numpy.array` of :obj:`float`): array of bin edges.
     """
 
-    def __init__(self, nbins, xmin, xmax):
+    def __init__(self, nbins=10, xmin=0, xmax=1):
         """Initialize histogram with number of bins and x range.
 
         Note:
@@ -114,6 +114,36 @@ class Hist1D:
         return (self.xmax-self.xmin)/self.nbins * \
                 (0.5 + (i % self.nbins)) + \
                 self.xmin
+
+    def save(self, outfile):
+        """Save histogram to a NumPy compressed binary file.
+        
+        Args:
+            outfile (:obj:`str`): name of output file (.npz extension).
+        """
+        np.savez_compressed(outfile, xedges=self.xedges, 
+                                     data_n=self.data_n,
+                                     data_w=self.data_w,
+                                     data_w2=self.data_w2,
+                                     data_x=self.data_x)
+
+    def load(self, infile):
+        """Load histogram from a compressed binary file.
+        
+        Args:
+            infile (:obj:`str`): name of NPZ format input file.
+        """
+        f = np.load(infile)
+
+        self.data_n  = f['data_n']
+        self.data_w  = f['data_w']
+        self.data_w2 = f['data_w2']
+        self.data_x  = f['data_x']
+
+        self.xedges  = f['xedges']
+        self.xmin, self.xmax = self.xedges[0], self.xedges[-1]
+
+        self.nbins = len(self.data_n)
 
 
 class Hist2D:
