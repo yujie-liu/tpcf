@@ -1,6 +1,7 @@
 import unittest
 from hist_fast import Hist1D, Hist2D
 import numpy as np
+from subprocess import call
 
 class Hist1DTestCase(unittest.TestCase):
     """Tests for `Hist1D`."""
@@ -55,6 +56,8 @@ class Hist1DTestCase(unittest.TestCase):
         self.assertTrue(np.array_equal(ho.data_x, hi.data_x))
         self.assertTrue(np.array_equal(ho.data_w, hi.data_w))
         self.assertTrue(np.array_equal(ho.data_w2, hi.data_w2))
+
+        call('rm -f hist1d.npz'.split())
 
         
 class Hist2DTestCase(unittest.TestCase):
@@ -154,6 +157,8 @@ class Hist2DTestCase(unittest.TestCase):
         self.assertTrue(np.array_equal(ho.data_y, hi.data_y))
         self.assertTrue(np.array_equal(ho.data_w, hi.data_w))
         self.assertTrue(np.array_equal(ho.data_w2, hi.data_w2))
+
+        call('rm -f hist2d.npz'.split())
 
 if __name__ == '__main__':
     unittest.main()
