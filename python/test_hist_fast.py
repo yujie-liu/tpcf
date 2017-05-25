@@ -7,7 +7,7 @@ class Hist1DTestCase(unittest.TestCase):
 
     def test_init(self):
         h = Hist1D(5, 0., 1.)
-        self.assertEqual(h.nbins, 5)
+        self.assertEqual(h.nxbins, 5)
         self.assertEqual(h.xmin, 0.)
         self.assertEqual(h.xmax, 1.)
         self.assertTrue(np.array_equal(h.xedges, np.linspace(0., 1., 6)))
@@ -41,6 +41,22 @@ class Hist1DTestCase(unittest.TestCase):
         self.assertEqual(h.getBinMeanX(0), 0.1)
         self.assertEqual(h.getBinMeanX(4), 0.85)
 
+    def test_io(self):
+        ho = Hist1D(5, 0., 1.)
+        for x in [0.1, 0.1, 0.825, 0.85, 0.875]:
+            ho.fill(x)
+
+        ho.save('hist1d.npz')
+        hi = Hist1D()
+        hi.load('hist1d.npz')
+
+        self.assertTrue(np.array_equal(ho.xedges, hi.xedges))
+        self.assertTrue(np.array_equal(ho.data_n, hi.data_n))
+        self.assertTrue(np.array_equal(ho.data_x, hi.data_x))
+        self.assertTrue(np.array_equal(ho.data_w, hi.data_w))
+        self.assertTrue(np.array_equal(ho.data_w2, hi.data_w2))
+
+        
 class Hist2DTestCase(unittest.TestCase):
     """Tests for `Hist2D`."""
 
@@ -119,6 +135,25 @@ class Hist2DTestCase(unittest.TestCase):
         array[3,6] = 2.
 
         self.assertTrue(np.array_equal(h.getValue(), array.T))
+
+    def test_io(self):
+        ho = Hist2D(5,  0., 1.,
+                    10, 0., 10.)
+
+        for x, y in zip([0.1, 0.1, 0.7, 0.72], [1., 1.5, 6.5, 6.5]):
+            ho.fill(x, y)
+
+        ho.save('hist2d.npz')
+        hi = Hist2D()
+        hi.load('hist2d.npz')
+
+        self.assertTrue(np.array_equal(ho.xedges, hi.xedges))
+        self.assertTrue(np.array_equal(ho.yedges, hi.yedges))
+        self.assertTrue(np.array_equal(ho.data_n, hi.data_n))
+        self.assertTrue(np.array_equal(ho.data_x, hi.data_x))
+        self.assertTrue(np.array_equal(ho.data_y, hi.data_y))
+        self.assertTrue(np.array_equal(ho.data_w, hi.data_w))
+        self.assertTrue(np.array_equal(ho.data_w2, hi.data_w2))
 
 if __name__ == '__main__':
     unittest.main()
