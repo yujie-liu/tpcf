@@ -17,7 +17,7 @@ class Hist1D:
     into each bin.
 
     Attributes:
-        nbins (:obj:`int`): number of bins.
+        nxbins (:obj:`int`): number of bins.
         xmin (:obj:`float`): minimum of ordinate range.
         xmax (:obj:`float`): maximum of ordinate range.
         data_n (:obj:`numpy.array` of :obj:`float`): bin counts.
@@ -27,28 +27,28 @@ class Hist1D:
         xedges (:obj:`numpy.array` of :obj:`float`): array of bin edges.
     """
 
-    def __init__(self, nbins=10, xmin=0, xmax=1):
+    def __init__(self, nxbins=10, xmin=0, xmax=1):
         """Initialize histogram with number of bins and x range.
 
         Note:
             Only equal binning is currently supported.
 
         Args:
-            nbins (:obj:`int`): number of bins.
+            nxbins (:obj:`int`): number of bins.
             xmin (:obj:`float`): minimum of ordinate range.
             xmax (:obj:`float`): maximum of ordinate range.
         """
         # Bin number and limits
-        self.nbins = nbins
+        self.nxbins = nxbins
         self.xmin = xmin
         self.xmax = xmax
 
-        self.data_n  = np.zeros(nbins, dtype=float)
-        self.data_w  = np.zeros(nbins, dtype=float)
-        self.data_w2 = np.zeros(nbins, dtype=float)
-        self.data_x  = np.zeros(nbins, dtype=float)
+        self.data_n  = np.zeros(nxbins, dtype=float)
+        self.data_w  = np.zeros(nxbins, dtype=float)
+        self.data_w2 = np.zeros(nxbins, dtype=float)
+        self.data_x  = np.zeros(nxbins, dtype=float)
 
-        self.xedges   = np.linspace(xmin, xmax, nbins+1)
+        self.xedges   = np.linspace(xmin, xmax, nxbins+1)
 
     def fill(self, x, w=1.):
         """Fill histogram with ordinate x and weight w.
@@ -61,8 +61,8 @@ class Hist1D:
             x (:obj:`float`): ordinate used for binning.
             w (:obj:`float`): ordinate weight.
         """
-        i = int(self.nbins * (x-self.xmin)/(self.xmax-self.xmin))
-        if i < 0 or i >= self.nbins:
+        i = int(self.nxbins * (x-self.xmin)/(self.xmax-self.xmin))
+        if i < 0 or i >= self.nxbins:
             return
 
         self.data_n[i]  += 1;
@@ -111,8 +111,8 @@ class Hist1D:
         """
         if self.data_n[i] > 0:
             return self.data_x[i]/self.data_n[i]
-        return (self.xmax-self.xmin)/self.nbins * \
-                (0.5 + (i % self.nbins)) + \
+        return (self.xmax-self.xmin)/self.nxbins * \
+                (0.5 + (i % self.nxbins)) + \
                 self.xmin
 
     def save(self, outfile):
@@ -143,7 +143,7 @@ class Hist1D:
         self.xedges  = f['xedges']
         self.xmin, self.xmax = self.xedges[0], self.xedges[-1]
 
-        self.nbins = len(self.data_n)
+        self.nxbins = len(self.data_n)
 
 
 class Hist2D:
@@ -170,7 +170,7 @@ class Hist2D:
         yedges (:obj:`numpy.array` of :obj:`float`): array of bin edges.
     """
 
-    def __init__(self, nxbins, xmin, xmax, nybins, ymin, ymax):
+    def __init__(self, nxbins=10, xmin=0, xmax=1, nybins=10, ymin=0, ymax=1):
         """Initialize histogram with number of bins and x-y range.
 
         Note:
@@ -322,3 +322,39 @@ class Hist2D:
             (self.data_w2[non0] - self.data_w[non0]**2/self.data_n[non0]))
         # Reshape to 2D, noting that numpy using column-major ordering
         return np.reshape(err, (self.nxbins, self.nybins))
+
+    def save(self, outfile):
+        """Save histogram to a NumPy compressed binary file.
+        
+        Args:
+            outfile (:obj:`str`): name of output file (.npz extension).
+        """
+        np.savez_compressed(outfile, xedges=self.xedges, 
+                                     yedges=self.yedges,
+                                     data_n=self.data_n,
+                                     data_w=self.data_w,
+                                     data_w2=self.data_w2,
+                                     data_x=self.data_x,
+                                     data_y=self.data_y)
+
+    def load(self, infile):
+        """Load histogram from a compressed binary file.
+        
+        Args:
+            infile (:obj:`str`): name of NPZ format input file.
+        """
+        f = np.load(infile)
+
+        self.data_n  = f['data_n']
+        self.data_w  = f['data_w']
+        self.data_w2 = f['data_w2']
+        self.data_x  = f['data_x']
+        self.data_y  = f['data_y']
+
+        self.xedges  = f['xedges']
+        self.xmin, self.xmax = self.xedges[0], self.xedges[-1]
+        self.nxbins = len(self.data_x)
+
+        self.yedges  = f['yedges']
+        self.ymin, self.ymax = self.yedges[0], self.yedges[-1]
+        self.nybins = len(self.data_y)
