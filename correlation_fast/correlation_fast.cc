@@ -16,22 +16,33 @@
 using namespace std;
 using namespace TMath;
 
+double omegaM = 0.274;
+double omegaL = 1. - omegaM;
+double norm = 3000.
+
 struct Galaxy
 {
 	double phi;
 	double theta;
-	double r;       // change to z, allowing new cosmology
+	double z;
 	double w;
 };
+
+inline double z2r(const double& z)
+{
+	// somethingsomething
+}
 
 // Note: assumes flat space. Would want to replace with
 // Dc, Dm to get distance given z and a particular cosmology
 inline double dist(const Galaxy& A, const Galaxy& B)
 {
+	double A_r = z2r(A.z)
+	double B_r = z2r(B.z)
 	double C = Cos(A.phi)*Sin(A.theta) * Cos(B.phi)*Sin(B.theta) +
              Sin(A.phi)*Sin(A.theta) * Sin(B.phi)*Sin(B.theta) +
              Cos(A.theta) * Cos(B.theta);
-	return Sqrt(A.r*A.r + B.r*B.r - 2.*B.r*A.r*C);
+	return Sqrt(A_r*A_r + B_r*B_r - 2.*B_r*A_r*C);
 }
 
 // Angular map for galaxy positions. Hard-codes rectangular bins
@@ -130,7 +141,7 @@ class Correlations
 		double rw = 0.;
 		double rww = 0.;
 
-		Hist1D* RR_r = nullptr;	
+		Hist1D* RR_z = nullptr;	
 		Hist1D* RR_alpha = nullptr;
 		Hist2D* DR_alpha_r = nullptr;
 		Hist1D* DD_cor = nullptr;
@@ -157,7 +168,7 @@ class Correlations
 				MC_phi_theta.fill(pos.phi, pos.theta);
 
         // Fill radial distribution with weights.
-				RR_r->fill(pos.r, pos.w);
+				RR_z->fill(pos.z, pos.w);
 
         // Track weight sums and sum^2
 				rw += pos.w;
@@ -263,7 +274,7 @@ class Correlations
 
           // Note: calculation as a function of r assumes a
           // cosmology. Replace with z?
-					DR_alpha_r->fill(ga.r, ACos(dist), ga.w*gb.w);	
+					DR_alpha_r->fill(ga.z, ACos(dist), ga.w*gb.w);	
 				}
 			}
 		}
