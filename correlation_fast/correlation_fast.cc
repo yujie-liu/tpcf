@@ -18,7 +18,7 @@ using namespace TMath;
 
 double omegaM = 0.274;
 double omegaL = 1. - omegaM;
-double norm = 3000.
+double norm = 3000.;
 
 struct Galaxy
 {
@@ -33,8 +33,6 @@ inline double z2r(const double& z)
 	// somethingsomething
 }
 
-// Note: assumes flat space. Would want to replace with
-// Dc, Dm to get distance given z and a particular cosmology
 inline double dist(const Galaxy& A, const Galaxy& B)
 {
 	double A_r = z2r(A.z)

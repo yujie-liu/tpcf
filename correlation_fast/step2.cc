@@ -15,6 +15,33 @@
 using namespace std;
 using namespace TMath;
 
+double omegaM = 0.274;
+double omegaL = 1. - omegaM;
+double norm = 3000.;
+
+struct Galaxy
+{
+        double phi;
+        double theta;
+        double z;
+        double w;
+};
+
+inline double z2r(const double& z)
+{
+        // somethingsomething
+}
+
+inline double dist(const Galaxy& A, const Galaxy& B)
+{
+        double A_r = z2r(A.z)
+        double B_r = z2r(B.z)
+        double C = Cos(A.phi)*Sin(A.theta) * Cos(B.phi)*Sin(B.theta) +
+             Sin(A.phi)*Sin(A.theta) * Sin(B.phi)*Sin(B.theta) +
+             Cos(A.theta) * Cos(B.theta);
+        return Sqrt(A_r*A_r + B_r*B_r - 2.*B_r*A_r*C);
+}
+
 int main(int argc, char** argv)
 {
 	string filein(argv[1]);
