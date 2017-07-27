@@ -12,22 +12,24 @@ using namespace TMath;
 class Hist3D
 {
         private:
-                size_t nxbins_, nybins_;
+                size_t nxbins_, nybins_, nzbins_;
                 double xmin_, xmax_;
                 double ymin_, ymax_;
+		double zmin_, zmax_;
                 vector<double> data_n;
                 vector<double> data_w;
                 vector<double> data_w2;
                 vector<double> data_x;
                 vector<double> data_y;
+		vector<double> data_z;
         public:
                 Hist2D(size_t nxbins, double xmin, double xmax,
-           size_t nybins, double ymin, double ymax)
+           size_t nybins, double ymin, double ymax, size_t nzbins, double zmin, double zmax)
            :
-           nxbins_(nxbins), nybins_(nybins), xmin_(xmin), xmax_(xmax), ymin_(ymin), ymax_(ymax),
-           data_n(nxbins*nybins, 0.), data_w(nxbins*nybins, 0.), data_w2(nxbins*nybins, 0.),
-           data_x(nxbins*nybins, 0.), data_y(nxbins*nybins, 0.)
-          {
+           nxbins_(nxbins), nybins_(nybins), nzbins_(nzbins), xmin_(xmin), xmax_(xmax), ymin_(ymin), ymax_(ymax), zmin_(zmin), zmax_(zmax),
+           data_n(nxbins*nybins*nzbins, 0.), data_w(nxbins*nybins*nzbins, 0.), data_w2(nxbins*nybins*nzbins, 0.),
+           data_x(nxbins*nybins*nzbins, 0.), data_y(nxbins*nybins*nzbins, 0.), data_z(nxbins*nybins*nzbins, 0.)
+          {// here
           }
 
                 int getXBin(double x) const {return (x-xmin_)*nxbins_/(xmax_ - xmin_);}
