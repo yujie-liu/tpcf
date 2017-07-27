@@ -33,13 +33,19 @@ inline double z2r(const double& z)
 	return r;
 }
 
+inline double Calpha(const Galaxy& A, const Galaxy& B)
+{
+	double cdist = Cos(A.phi)*Sin(A.theta) * Cos(B.phi)*Sin(B.theta) +
+             Sin(A.phi)*Sin(A.theta) * Sin(B.phi)*Sin(B.theta) +
+             Cos(A.theta) * Cos(B.theta);
+	return cdist;
+}
+
 inline double dist(const Galaxy& A, const Galaxy& B)
 {
 	double A_r = z2r(A.z)
 	double B_r = z2r(B.z)
-	double C = Cos(A.phi)*Sin(A.theta) * Cos(B.phi)*Sin(B.theta) +
-             Sin(A.phi)*Sin(A.theta) * Sin(B.phi)*Sin(B.theta) +
-             Cos(A.theta) * Cos(B.theta);
+	double C = Calpha(A,B);
 	return Sqrt(A_r*A_r + B_r*B_r - 2.*B_r*A_r*C);
 }
 
