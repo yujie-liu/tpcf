@@ -23,7 +23,7 @@ class Hist3D
                 vector<double> data_y;
 		vector<double> data_z;
         public:
-                Hist2D(size_t nxbins, double xmin, double xmax,
+                Hist3D(size_t nxbins, double xmin, double xmax,
            size_t nybins, double ymin, double ymax, size_t nzbins, double zmin, double zmax)
            :
            nxbins_(nxbins), nybins_(nybins), nzbins_(nzbins), xmin_(xmin), xmax_(xmax), ymin_(ymin), ymax_(ymax), zmin_(zmin), zmax_(zmax),
@@ -90,7 +90,7 @@ class Hist3D
                         }
                         else
                         {
-                                return (xmax_ - xmin_)/nxbins_ * (0.5 + (bin % nxbins_))+ xmin_;
+                                return (xmax_ - xmin_)/nxbins_ * (0.5 + (bin % nxbins_)) + xmin_;
                         }
                 }
                 double getBinMeanX(int xbin, int ybin, int zbin)
@@ -107,65 +107,95 @@ class Hist3D
                         {
                                 return (ymax_ - ymin_)/nybins_ * (0.5 + ((bin % (nxbins_*nybins_)) / nxbins_)) + ymin_;
                         }
-                }// HERE
-                double getBinMeanY(int xbin, int ybin)
-                {
-                        return getBinMeanY(getBinByBins(xbin, ybin));
                 }
+                double getBinMeanY(int xbin, int ybin, int zbin)
+                {
+                        return getBinMeanY(getBinByBins(xbin, ybin, zbin));
+                }
+		double getBinMeanZ(int bin)
+		{
+			if(data_n[bin] > 0)
+			{
+				return data_z[bin]/data_n[bin];
+			}
+			else
+			{
+				return (zmax_ - zmin_)/nzbins_ * (0.5 + (bin / (nxbins_ * nybins_))) + zmin_;
+			}
+		}
+		double getBinMeanZ(int xbin, int ybin, int zbin)
+		{
+			return getBinMeanZ(getBinByBins(xbin, ybin, zbin));
+		}
                 int getNumBinsX() const {return nxbins_;}
                 int getNumBinsY() const {return nybins_;}
-                int getNumBins() const {return nxbins_*nybins_;}
-                TH2D* writeTH2D(string name)
+		int getNumBinsZ() const {return nzbins_;}
+                int getNumBins() const {return nxbins_*nybins_*nzbins_;}
+                TH3D* writeTH3D(string name)
                 {
-                        TH2D* h_n = new TH2D((name+"_n").c_str(), (name+"_n").c_str(), getNumBinsX(), xmin_, xmax_, getNumBinsY(), ymin_, ymax_);
-                        TH2D* h_w = new TH2D((name+"_w").c_str(), (name+"_w").c_str(), getNumBinsX(), xmin_, xmax_, getNumBinsY(), ymin_, ymax_);
-                        TH2D* h_w2 = new TH2D((name+"_w2").c_str(), (name+"_w2").c_str(), getNumBinsX(), xmin_, xmax_, getNumBinsY(), ymin_, ymax_);
-                        TH2D* h_x = new TH2D((name+"_x").c_str(), (name+"_x").c_str(), getNumBinsX(), xmin_, xmax_, getNumBinsY(), ymin_, ymax_);
-                        TH2D* h_y = new TH2D((name+"_y").c_str(), (name+"_y").c_str(), getNumBinsX(), xmin_, xmax_, getNumBinsY(), ymin_, ymax_);
+                        TH3D* h_n = new TH3D((name+"_n").c_str(), (name+"_n").c_str(), getNumBinsX(), xmin_, xmax_, getNumBinsY(), ymin_, ymax_, getNumBinsZ(), zmin_, zmax_);
+                        TH3D* h_w = new TH3D((name+"_w").c_str(), (name+"_w").c_str(), getNumBinsX(), xmin_, xmax_, getNumBinsY(), ymin_, ymax_, getNumBinsZ(), zmin_, zmax_);
+                        TH3D* h_w2 = new TH3D((name+"_w2").c_str(), (name+"_w2").c_str(), getNumBinsX(), xmin_, xmax_, getNumBinsY(), ymin_, ymax_, getNumBinsZ(), zmin_, zmax_);
+                        TH3D* h_x = new TH3D((name+"_x").c_str(), (name+"_x").c_str(), getNumBinsX(), xmin_, xmax_, getNumBinsY(), ymin_, ymax_, getNumBinsZ(), zmin_, zmax_);
+                        TH3D* h_y = new TH3D((name+"_y").c_str(), (name+"_y").c_str(), getNumBinsX(), xmin_, xmax_, getNumBinsY(), ymin_, ymax_, getNumBinsZ(), zmin_, zmax_);
+			TH3D* h_z = new TH3D((name+"_z").c_str(), (name+"_z").c_str(), getNumBinsX(), xmin_, xmax_, getNumBinsY(), ymin_, ymax_, getNumBinsZ(), zmin_, zmax_);
                         for(int bx = 0 ; bx < getNumBinsX() ; ++bx)
                         {
                                 for(int by = 0 ; by < getNumBinsY() ; ++by)
                                 {
-                                        h_w->SetBinContent(bx+1, by+1, data_w[getBinByBins(bx, by)]);
-                                        h_w->SetBinError(bx+1, by + 1, getBinUnc(bx, by));
-                                        h_w2->SetBinContent(bx+1, by+1, data_w2[getBinByBins(bx, by)]);
-                                        h_n->SetBinContent(bx+1, by+1, data_n[getBinByBins(bx, by)]);
-                                        h_n->SetBinError(bx+1, by+1, Sqrt(data_n[getBinByBins(bx, by)]));
-                                        h_x->SetBinContent(bx+1, by+1, data_x[getBinByBins(bx, by)]);
-                                        h_y->SetBinContent(bx+1, by+1, data_y[getBinByBins(bx, by)]);
+					for(int bz = 0 ; bz < getNumBinsZ() ; ++bz)
+					{
+                                        	h_w->SetBinContent(bx+1, by+1, bz+1, data_w[getBinByBins(bx, by, bz)]);
+                                        	h_w->SetBinError(bx+1, by+1, bz+1, getBinUnc(bx, by, bz));
+                                        	h_w2->SetBinContent(bx+1, by+1, bz+1, data_w2[getBinByBins(bx, by, bz)]);
+                                        	h_n->SetBinContent(bx+1, by+1, bz+1, data_n[getBinByBins(bx, by, bz)]);
+                                        	h_n->SetBinError(bx+1, by+1, bz+1, Sqrt(data_n[getBinByBins(bx, by, bz)]));
+                                        	h_x->SetBinContent(bx+1, by+1, bz+1, data_x[getBinByBins(bx, by, bz)]);
+                                        	h_y->SetBinContent(bx+1, by+1, bz+1, data_y[getBinByBins(bx, by, bz)]);
+						h_z->SetBinContent(bx+1, by+1, bz+1, data_z[getBinByBins(bx, by, bz)]);
+					}
                                 }
                         }
                         return h_w;
                 }
-                Hist2D(string filename, string name)
+                Hist3D(string filename, string name)
                 {
                         TDirectory* cdir = gDirectory;
                         TFile* fin = TFile::Open(filename.c_str());
-                        TH2D* h_n = dynamic_cast<TH2D*>(fin->Get((name+"_n").c_str()));
-                        TH2D* h_w = dynamic_cast<TH2D*>(fin->Get((name+"_w").c_str()));
-                        TH2D* h_w2 = dynamic_cast<TH2D*>(fin->Get((name+"_w2").c_str()));
-                        TH2D* h_x = dynamic_cast<TH2D*>(fin->Get((name+"_x").c_str()));
-                        TH2D* h_y = dynamic_cast<TH2D*>(fin->Get((name+"_y").c_str()));
+                        TH3D* h_n = dynamic_cast<TH3D*>(fin->Get((name+"_n").c_str()));
+                        TH3D* h_w = dynamic_cast<TH3D*>(fin->Get((name+"_w").c_str()));
+                        TH3D* h_w2 = dynamic_cast<TH3D*>(fin->Get((name+"_w2").c_str()));
+                        TH3D* h_x = dynamic_cast<TH3D*>(fin->Get((name+"_x").c_str()));
+                        TH3D* h_y = dynamic_cast<TH3D*>(fin->Get((name+"_y").c_str()));
+			TH3D* h_z = dynamic_cast<TH3D*>(fin->Get((name+"_z").c_str()));
                         nxbins_ = h_n->GetNbinsX();
                         nybins_ = h_n->GetNbinsY();
+			nzbins_ = h_n->GetNbinsZ();
                         xmin_ = h_n->GetXaxis()->GetXmin();
                         xmax_ = h_n->GetXaxis()->GetXmax();
                         ymin_ = h_n->GetYaxis()->GetXmin();
                         ymax_ = h_n->GetYaxis()->GetXmax();
-                        data_n.resize(nxbins_*nybins_);
-                        data_w.resize(nxbins_*nybins_);
-                        data_w2.resize(nxbins_*nybins_);
-                        data_x.resize(nxbins_*nybins_);
-                        data_y.resize(nxbins_*nybins_);
+			zmin_ = h_n->GetZaxis()->GetXmin();
+			zmax_ = h_n->GetZaxis()->GetXmax();
+                        data_n.resize(nxbins_*nybins_*nzbins_);
+                        data_w.resize(nxbins_*nybins_*nzbins_);
+                        data_w2.resize(nxbins_*nybins_*nzbins_);
+                        data_x.resize(nxbins_*nybins_*nzbins_);
+                        data_y.resize(nxbins_*nybins_*nzbins_);
+			data_z.resize(nxbins_*nybins_*nzbins_);
                         for(int bx = 0 ; bx < getNumBinsX() ; ++bx)
                         {
                                 for(int by = 0 ; by < getNumBinsY() ; ++by)
                                 {
-                                        data_n[getBinByBins(bx, by)] = h_n->GetBinContent(bx+1, by+1);
-                                        data_w[getBinByBins(bx, by)] = h_w->GetBinContent(bx+1, by+1);
-                                        data_w2[getBinByBins(bx, by)] = h_w2->GetBinContent(bx+1, by+1);
-                                        data_x[getBinByBins(bx, by)] = h_x->GetBinContent(bx+1, by+1);
-                                        data_y[getBinByBins(bx, by)] = h_y->GetBinContent(bx+1, by+1);
+					for(int bz ; bz < getNumBinsZ() ; ++bz)
+					{
+	                                        data_n[getBinByBins(bx, by, bz)] = h_n->GetBinContent(bx+1, by+1, bz+1);
+        	                                data_w[getBinByBins(bx, by, bz)] = h_w->GetBinContent(bx+1, by+1, bz+1);
+                	                        data_w2[getBinByBins(bx, by, bz)] = h_w2->GetBinContent(bx+1, by+1, bz+1);
+                        	                data_x[getBinByBins(bx, by, bz)] = h_x->GetBinContent(bx+1, by+1, bz+1);
+                                	        data_y[getBinByBins(bx, by, bz)] = h_y->GetBinContent(bx+1, by+1, bz+1);
+						data_z[getBinByBins(bx, by, bz)] = h_z->GetBinContent(bx+1, by+1, bz+1);
+					}
                                 }
                         }
                         delete fin;
