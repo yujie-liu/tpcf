@@ -141,8 +141,8 @@ class Correlations
 
 		Hist1D* RR_z = nullptr;	
 		Hist1D* RR_alpha = nullptr;
-		Hist2D* DR_alpha_r = nullptr;
-		Hist1D* DD_cor = nullptr;
+		Hist2D* DR_alpha_z = nullptr;
+		Hist3D* DD_alpha_z_z = nullptr;
 		TH1D* htime = nullptr;
 		TH1D* hnorm = nullptr;
 
@@ -272,7 +272,7 @@ class Correlations
 
           // Note: calculation as a function of r assumes a
           // cosmology. Replace with z?
-					DR_alpha_r->fill(ga.z, ACos(dist), ga.w*gb.w);	
+					DR_alpha_z->fill(ga.z, ACos(dist), ga.w*gb.w);	
 				}
 			}
 		}
