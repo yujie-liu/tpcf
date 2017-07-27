@@ -275,9 +275,6 @@ class Correlations
 					double dist = vx *  gb.cphi*gb.stheta;
 					dist += vy *  gb.sphi*gb.stheta;
 					dist += vz *  gb.ctheta;
-
-          // Note: calculation as a function of r assumes a
-          // cosmology. Replace with z?
 					DR_alpha_z->fill(ga.z, ACos(dist), ga.w*gb.w);	
 				}
 			}
@@ -295,9 +292,8 @@ class Correlations
 				{
 					for(const Galaxy& gb : vb)
 					{
-            // 1D histogram of DD as a function of 3D separation.
-            // Note: distance calculation assumes flat space.
-						DD_cor->fill(dist(ga,gb), ga.w*gb.w);
+						dist = Calpha(ga,gb);
+						DD_cor->fill(ga.z, gb.z, ACos(dist), ga.w*gb.w);
 					}
 				}
 			}
@@ -308,9 +304,8 @@ class Correlations
 				{   
 					for(size_t y = 0 ; y < x ; ++y)
 					{   
-            // 1D histogram of DD as a function of 3D separation.
-            // Note: distance calculation assumes flat space.
-						DD_cor->fill(dist(va[x],va[y]), va[x].w*va[y].w);
+						dist = Calpha(va[x],va[y]);
+						DD_cor->fill(va[x].z, va[y].z, ACos(dist), va[x].w*va[y].w);
 					}
 				}
 			}
