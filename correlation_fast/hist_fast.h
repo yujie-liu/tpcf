@@ -29,15 +29,16 @@ class Hist3D
            nxbins_(nxbins), nybins_(nybins), nzbins_(nzbins), xmin_(xmin), xmax_(xmax), ymin_(ymin), ymax_(ymax), zmin_(zmin), zmax_(zmax),
            data_n(nxbins*nybins*nzbins, 0.), data_w(nxbins*nybins*nzbins, 0.), data_w2(nxbins*nybins*nzbins, 0.),
            data_x(nxbins*nybins*nzbins, 0.), data_y(nxbins*nybins*nzbins, 0.), data_z(nxbins*nybins*nzbins, 0.)
-          {// here
+          {
           }
 
                 int getXBin(double x) const {return (x-xmin_)*nxbins_/(xmax_ - xmin_);}
                 int getYBin(double y) const {return (y-ymin_)*nybins_/(ymax_ - ymin_);}
-                int getBin(double x, double y){return getXBin(x) + nxbins_ * getYBin(y);}
-                void fill(double x, double y, double w = 1.)
+		int getZBin(double z) const {return (z-zmin_)*nzbins_/(zmax_ - zmin_);}
+                int getBin(double x, double y, double z){return getXBin(x) + nxbins_ * getYBin(y) + nxbins_ * nybins_ * getZBin(z);}
+                void fill(double x, double y, double z, double w = 1.)
                 {
-                        int bin = getBin(x, y);
+                        int bin = getBin(x, y, z);
                         if(bin < 0 || bin >= int(data_n.size())) return;
 
                         data_n[bin] += 1;
@@ -45,25 +46,26 @@ class Hist3D
                         data_w2[bin] += w*w;
                         data_x[bin] += x;
                         data_y[bin] += y;
+			data_z[bin] += z;
                 }
 
-                int getBinByBins(int xbin, int ybin) const {return xbin + nxbins_ * ybin;}
+                int getBinByBins(int xbin, int ybin, int zbin) const {return xbin + nxbins_ * ybin + nxbins_ * nybins_ * zbin;}
 
                 double getBinEntries(int bin)
                 {
                         return data_n[bin];
                 }
-                double getBinEntries(int xbin, int ybin)
+                double getBinEntries(int xbin, int ybin, int zbin)
                 {
-                        return getBinEntries(getBinByBins(xbin, ybin));
+                        return getBinEntries(getBinByBins(xbin, ybin, zbin));
                 }
                 double getBinValue(int bin)
                 {
                         return data_w[bin];
                 }
-                double getBinValue(int xbin, int ybin)
+                double getBinValue(int xbin, int ybin, int zbin)
                 {
-                        return getBinValue(getBinByBins(xbin, ybin));
+                        return getBinValue(getBinByBins(xbin, ybin, zbin));
                 }
                 double getBinUnc(int bin)
                 {
@@ -76,9 +78,9 @@ class Hist3D
                                 return 0.;
                         }
                 }
-                double getBinUnc(int xbin, int ybin)
+                double getBinUnc(int xbin, int ybin, int zbin)
                 {
-                        return getBinUnc(getBinByBins(xbin, ybin));
+                        return getBinUnc(getBinByBins(xbin, ybin, zbin));
                 }
                 double getBinMeanX(int bin)
                 {
@@ -91,9 +93,9 @@ class Hist3D
                                 return (xmax_ - xmin_)/nxbins_ * (0.5 + (bin % nxbins_))+ xmin_;
                         }
                 }
-                double getBinMeanX(int xbin, int ybin)
+                double getBinMeanX(int xbin, int ybin, int zbin)
                 {
-                        return getBinMeanX(getBinByBins(xbin, ybin));
+                        return getBinMeanX(getBinByBins(xbin, ybin, zbin));
                 }
                 double getBinMeanY(int bin)
                 {
@@ -103,9 +105,9 @@ class Hist3D
                         }
                         else
                         {
-                                return (ymax_ - ymin_)/nybins_ * (0.5 + (bin / nxbins_)) + ymin_;
+                                return (ymax_ - ymin_)/nybins_ * (0.5 + ((bin % (nxbins_*nybins_)) / nxbins_)) + ymin_;
                         }
-                }
+                }// HERE
                 double getBinMeanY(int xbin, int ybin)
                 {
                         return getBinMeanY(getBinByBins(xbin, ybin));
