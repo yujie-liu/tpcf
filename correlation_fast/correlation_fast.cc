@@ -293,7 +293,7 @@ class Correlations
 					for(const Galaxy& gb : vb)
 					{
 						dist = Calpha(ga,gb);
-						DD_cor->fill(ga.z, gb.z, ACos(dist), ga.w*gb.w);
+						DD_alpha_z_z->fill(ga.z, gb.z, ACos(dist), ga.w*gb.w);
 					}
 				}
 			}
@@ -305,7 +305,7 @@ class Correlations
 					for(size_t y = 0 ; y < x ; ++y)
 					{   
 						dist = Calpha(va[x],va[y]);
-						DD_cor->fill(va[x].z, va[y].z, ACos(dist), va[x].w*va[y].w);
+						DD_alpha_z_z->fill(va[x].z, va[y].z, ACos(dist), va[x].w*va[y].w);
 					}
 				}
 			}
@@ -339,13 +339,13 @@ class Correlations
 		thetamax_ = cfg.Get<double>("theta_max");
 		phimin_ = cfg.Get<double>("phi_min");
 		phimax_ = cfg.Get<double>("phi_max");
-		rmin_ = cfg.Get<double>("r_min");
-		rmax_ = cfg.Get<double>("r_max");
+		rmin_ = cfg.Get<double>("z_min");
+		rmax_ = cfg.Get<double>("z_max");
 		thetaregions_ = cfg.Get<int>("theta_regions");
 		phiregions_ = cfg.Get<int>("phi_regions");
 		thetabins_ = cfg.Get<int>("theta_bins");
 		phibins_ = cfg.Get<int>("phi_bins");
-		rbins_ = cfg.Get<int>("r_bins");
+		rbins_ = cfg.Get<int>("z_bins");
 		abins_ = cfg.Get<int>("alpha_bins");
 		smin_ = cfg.Get<double>("s_min");
 		smax_ = cfg.Get<double>("s_max");
@@ -353,10 +353,10 @@ class Correlations
 
 		R = new Map2D<Galaxy_ang>(phiregions_, phimin_, phimax_, thetaregions_, thetamin_, thetamax_);
 		D = new Map2D<Galaxy>(phiregions_, phimin_, phimax_, thetaregions_, thetamin_, thetamax_);
-		RR_r = new Hist1D(rbins_, rmin_, rmax_);
+		RR_r = new Hist1D(zbins_, rmin_, rmax_);
 		RR_alpha = new Hist1D(abins_, 0, Pi());
-		DR_alpha_r = new Hist2D(rbins_, rmin_, rmax_, abins_, 0, Pi());
-		DD_cor = new Hist1D(sbins_, smin_, smax_);
+		DR_alpha_z = new Hist2D(zbins_, zmin_, zmax_, abins_, 0, Pi());// HERE
+		DD_alpha_z_z = new Hist3D(sbins_, smin_, smax_);
 
 		htime = new TH1D("htime", "htime", 10, 0, 10);
 		hnorm = new TH1D("hnorm", "hnorm", 3, 0, 3);
