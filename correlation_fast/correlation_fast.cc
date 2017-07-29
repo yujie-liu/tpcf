@@ -339,13 +339,13 @@ class Correlations
 		thetamax_ = cfg.Get<double>("theta_max");
 		phimin_ = cfg.Get<double>("phi_min");
 		phimax_ = cfg.Get<double>("phi_max");
-		rmin_ = cfg.Get<double>("z_min");
-		rmax_ = cfg.Get<double>("z_max");
+		zmin_ = cfg.Get<double>("z_min");
+		zmax_ = cfg.Get<double>("z_max");
 		thetaregions_ = cfg.Get<int>("theta_regions");
 		phiregions_ = cfg.Get<int>("phi_regions");
 		thetabins_ = cfg.Get<int>("theta_bins");
 		phibins_ = cfg.Get<int>("phi_bins");
-		rbins_ = cfg.Get<int>("z_bins");
+		zbins_ = cfg.Get<int>("z_bins");
 		abins_ = cfg.Get<int>("alpha_bins");
 		smin_ = cfg.Get<double>("s_min");
 		smax_ = cfg.Get<double>("s_max");
@@ -353,10 +353,10 @@ class Correlations
 
 		R = new Map2D<Galaxy_ang>(phiregions_, phimin_, phimax_, thetaregions_, thetamin_, thetamax_);
 		D = new Map2D<Galaxy>(phiregions_, phimin_, phimax_, thetaregions_, thetamin_, thetamax_);
-		RR_r = new Hist1D(zbins_, rmin_, rmax_);
+		RR_z = new Hist1D(zbins_, zmin_, zmax_);
 		RR_alpha = new Hist1D(abins_, 0, Pi());
-		DR_alpha_z = new Hist2D(zbins_, zmin_, zmax_, abins_, 0, Pi());// HERE
-		DD_alpha_z_z = new Hist3D(sbins_, smin_, smax_);
+		DR_alpha_z = new Hist2D(zbins_, zmin_, zmax_, abins_, 0, Pi());
+		DD_alpha_z_z = new Hist3D(zbins_, zmin_, zmax_, zbins_, zmin_, zmax_, abins_, 0, Pi());
 
 		htime = new TH1D("htime", "htime", 10, 0, 10);
 		hnorm = new TH1D("hnorm", "hnorm", 3, 0, 3);
@@ -368,10 +368,10 @@ class Correlations
 		~Correlations()
 		{
 			TFile* fout = TFile::Open(outfile_.c_str(), "recreate");
-			RR_r->writeTH1D("RR_r");
+			RR_z->writeTH1D("RR_z");
 			RR_alpha->writeTH1D("RR_alpha");
-			DR_alpha_r->writeTH2D("DR_alpha_r");
-			DD_cor->writeTH1D("DD_cor");
+			DR_alpha_z->writeTH2D("DR_alpha_z");
+			DD_alpha_z_z->writeTH3D("DD_alpha_z_z");
 			htime->Write("htime");
 			hnorm->Write("hnorm");
 			fout->Write();
@@ -388,7 +388,7 @@ class Correlations
 				hnorm->SetBinContent(1, (rw*rw-rww)*0.5);
 				hnorm->SetBinContent(2, rw*dw);
 				hnorm->SetBinContent(3, (dw*dw-dww)*0.5);
-				cout << "Normalization RR = " <<  hnorm->GetBinContent(1) << ", RD = " << hnorm->GetBinContent(2) << ", DD = " << hnorm->GetBinContent(3) << endl; 
+				cout << "Normalization RR = " <<  hnorm->GetBinContent(1) << ", RD = " << hnorm->GetBinContent(2) << ", DD = " << hnorm->GetBinContent(3) << endl;
 			}
 			int av_jobs = R->getNumBins()*5;
 			cout << "Job number: " << job_n << ", total number of jobs: " << job_tot << ", available jobs: " << av_jobs << endl;
