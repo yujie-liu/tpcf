@@ -16,9 +16,6 @@
 using namespace std;
 using namespace TMath;
 
-double omegaM = 0.274;
-double norm = 3000.;
-
 struct Galaxy
 {
 	double phi;
@@ -27,26 +24,12 @@ struct Galaxy
 	double w;
 };
 
-inline double z2r(const double& z)
-{
-	double r = norm * z * (1 - .75*omegaM*z);
-	return r;
-}
-
 inline double Calpha(const Galaxy& A, const Galaxy& B)
 {
 	double cdist = Cos(A.phi)*Sin(A.theta) * Cos(B.phi)*Sin(B.theta) +
              Sin(A.phi)*Sin(A.theta) * Sin(B.phi)*Sin(B.theta) +
              Cos(A.theta) * Cos(B.theta);
 	return cdist;
-}
-
-inline double dist(const Galaxy& A, const Galaxy& B)
-{
-	double A_r = z2r(A.z)
-	double B_r = z2r(B.z)
-	double C = Calpha(A,B);
-	return Sqrt(A_r*A_r + B_r*B_r - 2.*B_r*A_r*C);
 }
 
 // Angular map for galaxy positions. Hard-codes rectangular bins

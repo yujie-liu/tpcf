@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "hist_fast.h"
+#include "ConfigParser.h"
 
 using namespace std;
 using namespace TMath;
@@ -44,17 +45,23 @@ inline double dist(const Galaxy& A, const Galaxy& B)
 
 int main(int argc, char** argv)
 {
-	string filein(argv[1]);
-	string fileout(argv[2]);
+	string configfile(argv[1]);
+	ConfigParser cfg(configfile);
 
-	Hist1D* corDD = new Hist1D(filein, "DD_cor");	
+	string filein = cfg.Get<string>("step2_file_in");
+	string fileout = cfg.Get<string>("step2_file_out");
+	int sbins = cfg.Get<int>("sbins");
+	double smin = cfg.Get<double>("smin");
+	double smax = cfg.Get<double>("smax");
 
-	Hist1D* corRR = new Hist1D(corDD->getNumBins(), corDD->getXMin(), corDD->getXMax());
-	Hist1D* corRD = new Hist1D(corDD->getNumBins(), corDD->getXMin(), corDD->getXMax());
+	Hist1D* corDD = new Hist1D(sbins, smin, smax);
+	Hist1D* corRR = new Hist1D(sbins, smin, smax);
+	Hist1D* corRD = new Hist1D(sbins, smin, smax);
 
 	Hist1D* RR_alpha = new Hist1D(filein, "RR_alpha");	
-	Hist1D* RR_r = new Hist1D(filein, "RR_r");	
-	Hist2D* DR_alpha_r = new Hist2D(filein, "DR_alpha_r");
+	Hist1D* RR_z = new Hist1D(filein, "RR_z");	
+	Hist2D* DR_alpha_z = new Hist2D(filein, "DR_alpha_z");
+	Hist3D* DD_alpha_z_z = new Hist3D(filein, "DD_alpha_z_z");
 
 	double rsum = RR_r->getEntries();
 	rsum = RR_r->scale(1./rsum);
