@@ -124,11 +124,11 @@ class Correlations
 		double thetamax_;
 		double phimin_;
 		double phimax_;
-		double rmin_;
-		double rmax_;
+		double zmin_;
+		double zmax_;
 		int thetaregions_;
 		int phiregions_;
-		int rbins_;
+		int zbins_;
 		int abins_;
 		int thetabins_;
 		int phibins_;
@@ -282,7 +282,7 @@ class Correlations
 				{
 					for(const Galaxy& gb : vb)
 					{
-						dist = Calpha(ga,gb);
+						double dist = Calpha(ga,gb);
 						DD_alpha_z_z->fill(ga.z, gb.z, ACos(dist), ga.w*gb.w);
 					}
 				}
@@ -294,7 +294,7 @@ class Correlations
 				{   
 					for(size_t y = 0 ; y < x ; ++y)
 					{   
-						dist = Calpha(va[x],va[y]);
+						double dist = Calpha(va[x],va[y]);
 						DD_alpha_z_z->fill(va[x].z, va[y].z, ACos(dist), va[x].w*va[y].w);
 					}
 				}
