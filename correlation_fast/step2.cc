@@ -16,13 +16,9 @@
 using namespace std;
 using namespace TMath;
 
-double omegaM = 0.274;
-double norm = 3000.;
-
-inline double z2r(const double& z)
+inline double z2r(const Hist1D& inttbl, const double& z)
 {
-        double r = norm * z * (1 - .75*omegaM*z);
-	return r;
+        return inttbl->getBinValue(z);
 }
 
 int main(int argc, char** argv)
@@ -32,6 +28,7 @@ int main(int argc, char** argv)
 
 	string filein = cfg.Get<string>("step2_file_in");
 	string fileout = cfg.Get<string>("step2_file_out");
+	string intfile = cfg.Get<string>("integral_file");
 	int sbins = cfg.Get<int>("sbins");
 	double smin = cfg.Get<double>("smin");
 	double smax = cfg.Get<double>("smax");
@@ -44,6 +41,8 @@ int main(int argc, char** argv)
 	Hist1D* RR_z = new Hist1D(filein, "RR_z");	
 	Hist2D* DR_alpha_z = new Hist2D(filein, "DR_alpha_z");
 	Hist3D* DD_alpha_z_z = new Hist3D(filein, "DD_alpha_z_z");
+
+	Hist1D* int_table = new Hist1D(intfile, "int_table");
 
 	double zsum = RR_z->getEntries();
 	zsum = RR_z->scale(1./zsum);
