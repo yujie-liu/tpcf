@@ -47,7 +47,15 @@ inline double Calpha(const Galaxy_ang& A, const Galaxy_ang& B)
 {
 	double cdist = A.cphi*A.stheta * B.cphi*B.stheta +
 	     A.sphi*A.stheta * B.sphi*B.stheta +
-	     A.ctheta + B.ctheta;
+	     A.ctheta * B.ctheta;
+	return cdist;
+}
+
+inline double Calpha(const Galaxy& A, const Galaxy_ang& B)
+{
+	double cdist = Cos(A.phi)*Sin(A.theta) * B.cphi*B.stheta +
+	     Sin(A.phi)*Sin(A.theta) * B.sphi*B.stheta +
+	     Cos(A.theta) * B.ctheta;
 	return cdist;
 }
 
@@ -223,9 +231,7 @@ class Correlations
 				{
 					for(const Galaxy_ang& gb : vb)
 					{
-						double dist = ga.cphi*ga.stheta * gb.cphi*gb.stheta;
-						dist += ga.sphi*ga.stheta *  gb.sphi*gb.stheta;
-						dist += ga.ctheta		  *  gb.ctheta;
+						double dist = Calpha(ga, gb);
 						RR_alpha->fill(ACos(dist), ga.w*gb.w);	
 					}
 				}
@@ -240,9 +246,7 @@ class Correlations
 					for(size_t y = 0 ; y <= x ; ++y)
 					{   
 						const Galaxy_ang& gb = va[y];
-						double dist = ga.cphi*ga.stheta * gb.cphi*gb.stheta;
-						dist += ga.sphi*ga.stheta *  gb.sphi*gb.stheta;
-						dist += ga.ctheta		  *  gb.ctheta;
+						double dist = Calpha(ga, gb);
 						double f = 1.;
 						if(x == y) {f = 0.5;}
 						RR_alpha->fill(ACos(dist), f*ga.w*gb.w);	
@@ -258,14 +262,9 @@ class Correlations
 			const vector<Galaxy_ang>& vb = R->getBinValue(binb);
 			for(const Galaxy& ga : va)
 			{
-				double vx = Cos(ga.phi)*Sin(ga.theta);
-				double vy = Sin(ga.phi)*Sin(ga.theta);
-				double vz = Cos(ga.theta);
 				for(const Galaxy_ang& gb : vb)
 				{
-					double dist = vx *  gb.cphi*gb.stheta;
-					dist += vy *  gb.sphi*gb.stheta;
-					dist += vz *  gb.ctheta;
+					double dist = Calpha(ga, gb);
 					DR_alpha_z->fill(ga.z, ACos(dist), ga.w*gb.w);	
 				}
 			}
