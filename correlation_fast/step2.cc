@@ -19,28 +19,10 @@ using namespace TMath;
 double omegaM = 0.274;
 double norm = 3000.;
 
-struct Galaxy
-{
-        double phi;
-        double theta;
-        double z;
-        double w;
-};
-
 inline double z2r(const double& z)
 {
         double r = norm * z * (1 - .75*omegaM*z);
 	return r;
-}
-
-inline double dist(const Galaxy& A, const Galaxy& B)
-{
-        double A_r = z2r(A.z)
-        double B_r = z2r(B.z)
-        double C = Cos(A.phi)*Sin(A.theta) * Cos(B.phi)*Sin(B.theta) +
-             Sin(A.phi)*Sin(A.theta) * Sin(B.phi)*Sin(B.theta) +
-             Cos(A.theta) * Cos(B.theta);
-        return Sqrt(A_r*A_r + B_r*B_r - 2.*B_r*A_r*C);
 }
 
 int main(int argc, char** argv)
@@ -136,7 +118,7 @@ int main(int argc, char** argv)
 	TH1D* htime = dynamic_cast<TH1D*>(fin->Get("htime"));
 	TH1D* hnorm = dynamic_cast<TH1D*>(fin->Get("hnorm"));
 	TFile* fout = TFile::Open(fileout.c_str(), "recreate");
-	TH1D* htpcf = new TH1D("tpcf", "tpcf", corDD->getNumBins(), corDD->getXMin(), corDD->getXMax());
+	TH1D* htpcf = new TH1D("tpcf", "tpcf", sbins, smin, smax);
 	for(int b = 0 ; b < htpcf->GetNbinsX() ; ++b)
 	{
 		if(corRR->getBinValue(b) > 0)
