@@ -101,20 +101,25 @@ int main(int argc, char** argv)
 
 	//RD
 	cout << "start RD" << endl;
-	for(int b = 0 ; b < DR_alpha_r->getNumBins() ; ++b)
+	for(int b = 0 ; b < DR_alpha_z->getNumBins() ; ++b)
 	{
 		if(DR_alpha_r->getBinValue(b) == 0) continue;
-		double Ar = DR_alpha_r->getBinMeanX(b);
-		double cab = Cos(DR_alpha_r->getBinMeanY(b));
-		for(int br = 0 ; br < RR_r->getNumBins() ; ++br)
+		double Az = DR_alpha_z->getBinMeanX(b);
+		double Ar = z2r(Az);
+		double cab = Cos(DR_alpha_z->getBinMeanY(b));
+		for(int bz = 0 ; bz < RR_z->getNumBins() ; ++bz)
 		{
-			if(RR_r->getBinValue(br) == 0.) continue;
-			double Br = RR_r->getBinMeanX(br);
+			if(RR_z->getBinValue(bz) == 0.) continue;
+			double Bz = RR_z->getBinMeanX(bz);
+			double Br = z2r(Bz);
       // Note: s calculation ignores curvature and assumes isotropy
 			corRD->fill(Sqrt(Ar*Ar + Br*Br - 2.*Ar*Br*cab),
-                  DR_alpha_r->getBinValue(b)*RR_r->getBinValue(br));
+                  DR_alpha_z->getBinValue(b)*RR_z->getBinValue(bz));
 		}
 	}
+
+	//DD
+	cout << "start DD" << endl;
 
 	TFile* fin = TFile::Open(filein.c_str());
 	TH1D* htime = dynamic_cast<TH1D*>(fin->Get("htime"));
