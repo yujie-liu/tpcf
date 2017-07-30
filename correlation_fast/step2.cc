@@ -63,9 +63,9 @@ int main(int argc, char** argv)
 	Hist2D* DR_alpha_z = new Hist2D(filein, "DR_alpha_z");
 	Hist3D* DD_alpha_z_z = new Hist3D(filein, "DD_alpha_z_z");
 
-	double rsum = RR_r->getEntries();
-	rsum = RR_r->scale(1./rsum);
-	cout << rsum << endl;
+	double zsum = RR_z->getEntries();
+	zsum = RR_z->scale(1./zsum);
+	cout << zsum << endl;
 	
 	//RR
 	cout << "start RR" << endl;
@@ -75,24 +75,26 @@ int main(int argc, char** argv)
 		if(RR_alpha->getBinValue(ang) == 0) continue;
 		double cab = Cos(RR_alpha->getBinMeanX(ang));
     // Integrate over radial distribution along one axis
-		for(int ar = 0 ; ar < RR_r->getNumBins() ; ++ar)
+		for(int az = 0 ; az < RR_z->getNumBins() ; ++az)
 		{
-			if(RR_r->getBinValue(ar) == 0.) continue;
-			double Ar = RR_r->getBinMeanX(ar);
+			if(RR_z->getBinValue(az) == 0.) continue;
+			double Az = RR_z->getBinMeanX(az);
+			double Ar = z2r(Az);
       // Integrate over radial distribution along other axis
-			for(int br = 0 ; br <= ar ; ++br)
+			for(int bz = 0 ; bz <= az ; ++bz)
 			{
-				if(RR_r->getBinValue(br) == 0.) continue;
-				double Br = RR_r->getBinMeanX(br);
+				if(RR_z->getBinValue(bz) == 0.) continue;
+				double Bz = RR_z->getBinMeanX(bz);
+				double Br = z2r(Bz);
 				double f = 2.;
-				if(ar == br) {f = 1.;}
+				if(az == bz) {f = 1.;}
         // Note: s calculation below ignores curvature, assumes isotropy
         // To do:
         //  1) Compute Az, Bz in terms of redshifts, not precomputed radial dist
         //  2) Convert Az, Bz to Ar, Br assuming a particular cosmology
         //  3) Calculate distances using formulas 6-8 in the MNRAS paper
 				corRR->fill(Sqrt(Ar*Ar + Br*Br - 2.*Ar*Br*cab),
-                    f*RR_alpha->getBinValue(ang)*RR_r->getBinValue(br)*RR_r->getBinValue(ar));
+                    f*RR_alpha->getBinValue(ang)*RR_z->getBinValue(bz)*RR_z->getBinValue(az));
 			}
 		}
 	}
