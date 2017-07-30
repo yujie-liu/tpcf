@@ -390,6 +390,8 @@ class Hist1D
 			data_x[bin] += x;
 		}
 		int getNumBins() const {return nbins_;}
+		int getBin(double x) const {return (x-min_)*nbins_/(max_ - min_);}
+
 		double getXMin() const {return min_;}
 		double getXMax() const {return max_;}
 
@@ -400,6 +402,10 @@ class Hist1D
 		double getBinValue(int bin)
 		{
 			return data_w[bin];
+		}
+		double getBinValue(double x)
+		{
+			return getBinValue(getBin(x));
 		}
 		double getBinUnc(int bin)
 		{
