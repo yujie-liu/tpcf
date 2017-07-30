@@ -103,7 +103,7 @@ int main(int argc, char** argv)
 	cout << "start RD" << endl;
 	for(int b = 0 ; b < DR_alpha_z->getNumBins() ; ++b)
 	{
-		if(DR_alpha_r->getBinValue(b) == 0) continue;
+		if(DR_alpha_z->getBinValue(b) == 0) continue;
 		double Az = DR_alpha_z->getBinMeanX(b);
 		double Ar = z2r(Az);
 		double cab = Cos(DR_alpha_z->getBinMeanY(b));
@@ -120,6 +120,12 @@ int main(int argc, char** argv)
 
 	//DD
 	cout << "start DD" << endl;
+	for(int a = 0 ; a < DD_alpha_z_z->getNumBins() ; ++a)
+	{
+		if(DD_alpha_z_z->getBinValue(a) == 0) continue;
+		double Az = DD_alpha_z_z->getBinMeanX(a);
+		double Ar = z2r(Az);
+	}
 
 	TFile* fin = TFile::Open(filein.c_str());
 	TH1D* htime = dynamic_cast<TH1D*>(fin->Get("htime"));

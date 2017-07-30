@@ -32,6 +32,25 @@ inline double Calpha(const Galaxy& A, const Galaxy& B)
 	return cdist;
 }
 
+// Galaxy 2D angular position and weight, using
+// direction cosines of theta and phi
+struct Galaxy_ang
+{
+        double w;
+        double cphi;
+        double sphi;
+        double ctheta;
+        double stheta;
+};
+
+inline double Calpha(const Galaxy_ang& A, const Galaxy_ang& B)
+{
+	double cdist = A.cphi*A.stheta * B.cphi*B.stheta +
+	     A.sphi*A.stheta * B.sphi*B.stheta +
+	     A.ctheta + B.ctheta;
+	return cdist;
+}
+
 // Angular map for galaxy positions. Hard-codes rectangular bins
 // in theta and phi.
 template< typename T > class Map2D
@@ -88,17 +107,6 @@ template< typename T > class Map2D
 		{
 			return getBinValue(getBinByBins(xbin, ybin));
 		}
-};
-
-// Galaxy 2D angular position and weight, using
-// direction cosines of theta and phi
-struct Galaxy_ang
-{
-	double w;
-	double cphi;
-	double sphi;
-	double ctheta;
-	double stheta;
 };
 
 class Correlations
