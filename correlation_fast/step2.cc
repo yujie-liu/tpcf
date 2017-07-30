@@ -125,6 +125,11 @@ int main(int argc, char** argv)
 		if(DD_alpha_z_z->getBinValue(a) == 0) continue;
 		double Az = DD_alpha_z_z->getBinMeanX(a);
 		double Ar = z2r(Az);
+		double Bz = DD_alpha_z_z->getBinMeanY(a);
+		double Br = z2r(Bz);
+		double cab = Cos(DD_alpha_z_z->getBinMeanZ(a));
+		corDD->fill(Sqrt(Ar*Ar + Br*Br - 2.*Ar*Br*cab),
+		    DD_alpha_z_z->getBinValue(a));
 	}
 
 	TFile* fin = TFile::Open(filein.c_str());
