@@ -60,13 +60,13 @@ int main(int argc, char** argv)
 		{
 			if(RR_z->getBinValue(az) == 0.) continue;
 			double Az = RR_z->getBinMeanX(az);
-			double Ar = z2r(Az);
+			double Ar = z2r(int_table, Az);
       // Integrate over radial distribution along other axis
 			for(int bz = 0 ; bz <= az ; ++bz)
 			{
 				if(RR_z->getBinValue(bz) == 0.) continue;
 				double Bz = RR_z->getBinMeanX(bz);
-				double Br = z2r(Bz);
+				double Br = z2r(int_table, Bz);
 				double f = 2.;
 				if(az == bz) {f = 1.;}
         // Note: s calculation below ignores curvature, assumes isotropy
@@ -86,13 +86,13 @@ int main(int argc, char** argv)
 	{
 		if(DR_alpha_z->getBinValue(b) == 0) continue;
 		double Az = DR_alpha_z->getBinMeanX(b);
-		double Ar = z2r(Az);
+		double Ar = z2r(int_table, Az);
 		double cab = Cos(DR_alpha_z->getBinMeanY(b));
 		for(int bz = 0 ; bz < RR_z->getNumBins() ; ++bz)
 		{
 			if(RR_z->getBinValue(bz) == 0.) continue;
 			double Bz = RR_z->getBinMeanX(bz);
-			double Br = z2r(Bz);
+			double Br = z2r(int_table, Bz);
       // Note: s calculation ignores curvature and assumes isotropy
 			corRD->fill(Sqrt(Ar*Ar + Br*Br - 2.*Ar*Br*cab),
                   DR_alpha_z->getBinValue(b)*RR_z->getBinValue(bz));
@@ -105,9 +105,9 @@ int main(int argc, char** argv)
 	{
 		if(DD_alpha_z_z->getBinValue(a) == 0) continue;
 		double Az = DD_alpha_z_z->getBinMeanX(a);
-		double Ar = z2r(Az);
+		double Ar = z2r(int_table, Az);
 		double Bz = DD_alpha_z_z->getBinMeanY(a);
-		double Br = z2r(Bz);
+		double Br = z2r(int_table, Bz);
 		double cab = Cos(DD_alpha_z_z->getBinMeanZ(a));
 		corDD->fill(Sqrt(Ar*Ar + Br*Br - 2.*Ar*Br*cab),
 		    DD_alpha_z_z->getBinValue(a));
