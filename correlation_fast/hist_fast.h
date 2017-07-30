@@ -399,11 +399,11 @@ class Hist1D
 		{
 			return data_n[bin];
 		}
-		double getBinValue(int bin)
+		double getBinValue(int bin) const
 		{
 			return data_w[bin];
 		}
-		double getBinValue(double x)
+		double getBinValue(double x) const
 		{
 			return getBinValue(getBin(x));
 		}

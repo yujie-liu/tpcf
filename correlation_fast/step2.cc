@@ -16,7 +16,7 @@
 using namespace std;
 using namespace TMath;
 
-inline double z2r(const Hist1D& inttbl, const double& z)
+inline double z2r(const Hist1D* inttbl, const double& z)
 {
         return inttbl->getBinValue(z);
 }
