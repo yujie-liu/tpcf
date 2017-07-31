@@ -23,9 +23,9 @@ int main(int argc, char** argv)
 	ConfigParser cfg(configfile);
 
 	string outfile = cfg.Get<string>("integral_file");
-	size_t zbins = cfg.Get<size_t>("zbins");
-	double zmin = cfg.Get<double>("zmin");
-	double zmax = cfg.Get<double>("zmax");
+	size_t zbins = cfg.Get<size_t>("z_bins");
+	double zmin = cfg.Get<double>("z_min");
+	double zmax = cfg.Get<double>("z_max");
 	double DH = 300000/cfg.Get<double>("H_0");
 	double omegaM = cfg.Get<double>("omegaM");
 	size_t tzbins = (size_t) (zbins*zmax/(zmax-zmin));
