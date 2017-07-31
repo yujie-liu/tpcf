@@ -28,7 +28,7 @@ int main(int argc, char** argv)
 	double zmax = cfg.Get<double>("zmax");
 	double DH = 300000/cfg.Get<double>("H_0");
 	double omegaM = cfg.Get<double>("omegaM");
-	size_t tzbins = (size_t) (zbins*zmax/(zmax-zmin))
+	size_t tzbins = (size_t) (zbins*zmax/(zmax-zmin));
 	double bwidth = zmax/tzbins;
 
 	Hist1D* int_table = new Hist1D(tzbins, 0., zmax);
