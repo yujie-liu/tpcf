@@ -12,7 +12,7 @@
 using namespace std;
 using namespace TMath;
 
-inline double Efunc(const double& omegaM, const double& z)
+double Efunc(const double& omegaM, const double& z)
 {
 	return Sqrt(1 + omegaM * (3*(z+z*z) + z*z*z));
 }
