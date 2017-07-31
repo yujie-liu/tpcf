@@ -29,9 +29,9 @@ int main(int argc, char** argv)
 	string filein = cfg.Get<string>("step2_file_in");
 	string fileout = cfg.Get<string>("step2_file_out");
 	string intfile = cfg.Get<string>("integral_file");
-	int sbins = cfg.Get<int>("sbins");
-	double smin = cfg.Get<double>("smin");
-	double smax = cfg.Get<double>("smax");
+	int sbins = cfg.Get<int>("s_bins");
+	double smin = cfg.Get<double>("s_min");
+	double smax = cfg.Get<double>("s_max");
 
 	Hist1D* corDD = new Hist1D(sbins, smin, smax);
 	Hist1D* corRR = new Hist1D(sbins, smin, smax);
