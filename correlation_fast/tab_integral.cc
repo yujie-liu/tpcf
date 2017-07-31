@@ -31,7 +31,7 @@ int main(int argc, char** argv)
 	size_t tzbins = (size_t) (zbins*zmax/(zmax-zmin));
 	double bwidth = zmax/tzbins;
 
-	Hist1D* int_table = new Hist1D(tzbins, 0., zmax);
+	Hist1D* int_table = new Hist1D(tzbins, zmin, zmax);
 	double intval = 0.;
 	double s1 = 1/Efunc(omegaM, 0.);
 	double s2 = 1/Efunc(omegaM, bwidth);
@@ -39,6 +39,7 @@ int main(int argc, char** argv)
 	for(int i = 0 ; i < tzbins; ++i)
 	{
 		intval += 0.5 * bwidth * (s1+s2);
+		if(i 
 		int_table->fill(bc, DH*intval);
 		s1 = s2;
 		s2 = 1/Efunc(omegaM, bwidth*(i+2));
