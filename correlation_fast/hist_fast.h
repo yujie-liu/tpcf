@@ -188,7 +188,7 @@ class Hist3D
                         {
                                 for(int by = 0 ; by < getNumBinsY() ; ++by)
                                 {
-					for(int bz ; bz < getNumBinsZ() ; ++bz)
+					for(int bz = 0 ; bz < getNumBinsZ() ; ++bz)
 					{
 	                                        data_n[getBinByBins(bx, by, bz)] = h_n->GetBinContent(bx+1, by+1, bz+1);
         	                                data_w[getBinByBins(bx, by, bz)] = h_w->GetBinContent(bx+1, by+1, bz+1);
