@@ -126,9 +126,13 @@ class Correlations
 		double phimax_;
 		double zmin_;
 		double zmax_;
+		double dzmax_;
+		double amax_;
 		int thetaregions_;
 		int phiregions_;
 		int zbins_;
+		int datzbins_;
+		int dzbins_;
 		int abins_;
 		int thetabins_;
 		int phibins_;
@@ -147,7 +151,7 @@ class Correlations
 		Hist1D* RR_z = nullptr;	
 		Hist1D* RR_alpha = nullptr;
 		Hist2D* DR_alpha_z = nullptr;
-		Hist3D* DD_alpha_z_z = nullptr;
+		Hist3D* DD_alpha_z_dz = nullptr;
 		TH1D* htime = nullptr;
 		TH1D* hnorm = nullptr;
 
@@ -283,7 +287,7 @@ class Correlations
 					for(const Galaxy& gb : vb)
 					{
 						double dist = Calpha(ga,gb);
-						DD_alpha_z_z->fill(ga.z, gb.z, ACos(dist), ga.w*gb.w);
+						DD_alpha_z_dz->fill(ga.z, gb.z-ga.z, ACos(dist), ga.w*gb.w);
 					}
 				}
 			}
@@ -295,7 +299,7 @@ class Correlations
 					for(size_t y = 0 ; y < x ; ++y)
 					{   
 						double dist = Calpha(va[x],va[y]);
-						DD_alpha_z_z->fill(va[x].z, va[y].z, ACos(dist), va[x].w*va[y].w);
+						DD_alpha_z_dz->fill(va[x].z, va[y].z-va[x].z, ACos(dist), va[x].w*va[y].w);
 					}
 				}
 			}
@@ -331,11 +335,15 @@ class Correlations
 		phimax_ = cfg.Get<double>("phi_max");
 		zmin_ = cfg.Get<double>("z_min");
 		zmax_ = cfg.Get<double>("z_max");
+		dzmax_ = cfg.Get<double>("dz_max");
+		amax_ = cfg.Get<double>("alpha_max");
 		thetaregions_ = cfg.Get<int>("theta_regions");
 		phiregions_ = cfg.Get<int>("phi_regions");
 		thetabins_ = cfg.Get<int>("theta_bins");
 		phibins_ = cfg.Get<int>("phi_bins");
 		zbins_ = cfg.Get<int>("z_bins");
+		datzbins_ = cfg.Get<int>("dd_z_bins");
+		dzbins_ = cfg.Get<int>("dz_bins");
 		abins_ = cfg.Get<int>("alpha_bins");
 		smin_ = cfg.Get<double>("s_min");
 		smax_ = cfg.Get<double>("s_max");
@@ -344,9 +352,9 @@ class Correlations
 		R = new Map2D<Galaxy_ang>(phiregions_, phimin_, phimax_, thetaregions_, thetamin_, thetamax_);
 		D = new Map2D<Galaxy>(phiregions_, phimin_, phimax_, thetaregions_, thetamin_, thetamax_);
 		RR_z = new Hist1D(zbins_, zmin_, zmax_);
-		RR_alpha = new Hist1D(abins_, 0, Pi());
-		DR_alpha_z = new Hist2D(zbins_, zmin_, zmax_, abins_, 0, Pi());
-		DD_alpha_z_z = new Hist3D(zbins_, zmin_, zmax_, zbins_, zmin_, zmax_, abins_, 0, Pi());
+		RR_alpha = new Hist1D(abins_, 0, amax_);
+		DR_alpha_z = new Hist2D(zbins_, zmin_, zmax_, abins_, 0, amax_);
+		DD_alpha_z_dz = new Hist3D(datzbins_, zmin_, zmax_, dzbins_, 0-dzmax_, dzmax_, abins_, 0, amax_);
 
 		htime = new TH1D("htime", "htime", 10, 0, 10);
 		hnorm = new TH1D("hnorm", "hnorm", 3, 0, 3);
@@ -361,7 +369,7 @@ class Correlations
 			RR_z->writeTH1D("RR_z");
 			RR_alpha->writeTH1D("RR_alpha");
 			DR_alpha_z->writeTH2D("DR_alpha_z");
-			DD_alpha_z_z->writeTH3D("DD_alpha_z_z");
+			DD_alpha_z_dz->writeTH3D("DD_alpha_z_dz");
 			htime->Write("htime");
 			hnorm->Write("hnorm");
 			fout->Write();

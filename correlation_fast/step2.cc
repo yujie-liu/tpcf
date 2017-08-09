@@ -40,7 +40,7 @@ int main(int argc, char** argv)
 	Hist1D* RR_alpha = new Hist1D(filein, "RR_alpha");	
 	Hist1D* RR_z = new Hist1D(filein, "RR_z");	
 	Hist2D* DR_alpha_z = new Hist2D(filein, "DR_alpha_z");
-	Hist3D* DD_alpha_z_z = new Hist3D(filein, "DD_alpha_z_z");
+	Hist3D* DD_alpha_z_dz = new Hist3D(filein, "DD_alpha_z_dz");
 
 	Hist1D* int_table = new Hist1D(intfile, "int_table");
 
@@ -101,16 +101,16 @@ int main(int argc, char** argv)
 
 	//DD
 	cout << "start DD" << endl;
-	for(int a = 0 ; a < DD_alpha_z_z->getNumBins() ; ++a)
+	for(int a = 0 ; a < DD_alpha_z_dz->getNumBins() ; ++a)
 	{
-		if(DD_alpha_z_z->getBinValue(a) == 0) continue;
-		double Az = DD_alpha_z_z->getBinMeanX(a);
+		if(DD_alpha_z_dz->getBinValue(a) == 0) continue;
+		double Az = DD_alpha_z_dz->getBinMeanX(a);
 		double Ar = z2r(int_table, Az);
-		double Bz = DD_alpha_z_z->getBinMeanY(a);
+		double Bz = Az + DD_alpha_z_dz->getBinMeanY(a);
 		double Br = z2r(int_table, Bz);
-		double cab = Cos(DD_alpha_z_z->getBinMeanZ(a));
+		double cab = Cos(DD_alpha_z_dz->getBinMeanZ(a));
 		corDD->fill(Sqrt(Ar*Ar + Br*Br - 2.*Ar*Br*cab),
-		    DD_alpha_z_z->getBinValue(a));
+		    DD_alpha_z_dz->getBinValue(a));
 	}
 
 	TFile* fin = TFile::Open(filein.c_str());

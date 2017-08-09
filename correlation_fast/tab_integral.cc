@@ -38,7 +38,7 @@ int main(int argc, char** argv)
 	double bc = 0.5 * bwidth;
 	for(int i = 0 ; i < tzbins; ++i)
 	{
-		intval += 0.5 * bwidth * (s1+s2); 
+		intval += 0.5 * bwidth * (s1+s2);
 		int_table->fill(bc, DH*intval);
 		s1 = s2;
 		s2 = 1/Efunc(omegaM, bwidth*(i+2));
