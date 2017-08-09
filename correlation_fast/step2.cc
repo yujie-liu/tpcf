@@ -114,8 +114,13 @@ int main(int argc, char** argv)
 		double Ar = z2r(int_table, Az);
 		double Bz = Az + DD_alpha_z_dz->getBinMeanY(a);
 		double Br = z2r(int_table, Bz);
-		double cab = Cos(DD_alpha_z_dz->getBinMeanZ(a));
-		corDD->fill(Sqrt(Ar*Ar + Br*Br - 2.*Ar*Br*cab),
+		double cab2 = Cos((DD_alpha_z_dz->getBinMeanZ(a))/2);
+		double sab2 = Sqrt(1-(cab2*cab2));
+		double Dc = (Ar+Br)/2;
+		double K = omegaK*Dc*Dc/(6*D_H*D_H);
+		double s12 = (1+K) * (Ar+Br) * sab2;
+		double p12 = Abs(Ar-Br) * cab2;
+		corDD->fill(Sqrt(s12*s12 + p12+p12),
 		    DD_alpha_z_dz->getBinValue(a));
 	}
 
