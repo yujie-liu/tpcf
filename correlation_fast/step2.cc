@@ -43,6 +43,8 @@ int main(int argc, char** argv)
 	Hist3D* DD_alpha_z_dz = new Hist3D(filein, "DD_alpha_z_dz");
 
 	Hist1D* int_table = new Hist1D(intfile, "int_table");
+	double omegaK = cfg.Get<double>("omegaK");
+	double D_H = 300000/cfg.Get<double>("H0");
 
 	double zsum = RR_z->getEntries();
 	zsum = RR_z->scale(1./zsum);
@@ -54,7 +56,8 @@ int main(int argc, char** argv)
 	for(int ang = 0 ; ang < RR_alpha->getNumBins() ; ++ang)
 	{
 		if(RR_alpha->getBinValue(ang) == 0) continue;
-		double cab = Cos(RR_alpha->getBinMeanX(ang));
+		double cab2 = Cos((RR_alpha->getBinMeanX(ang))/2);
+		double sab2 = Sqrt(1-(cab2*cab2));
     // Integrate over radial distribution along one axis
 		for(int az = 0 ; az < RR_z->getNumBins() ; ++az)
 		{
@@ -67,14 +70,13 @@ int main(int argc, char** argv)
 				if(RR_z->getBinValue(bz) == 0.) continue;
 				double Bz = RR_z->getBinMeanX(bz);
 				double Br = z2r(int_table, Bz);
+				double Dc = (Ar+Br)/2;
+				double K = omegaK*Dc*Dc/(6*D_H*D_H);
+				double s12 = (1+K) * (Ar+Br) * sab2;
+				double p12 = Abs(Ar-Br) * cab2;
 				double f = 2.;
 				if(az == bz) {f = 1.;}
-        // Note: s calculation below ignores curvature, assumes isotropy
-        // To do:
-        //  1) Compute Az, Bz in terms of redshifts, not precomputed radial dist
-        //  2) Convert Az, Bz to Ar, Br assuming a particular cosmology
-        //  3) Calculate distances using formulas 6-8 in the MNRAS paper
-				corRR->fill(Sqrt(Ar*Ar + Br*Br - 2.*Ar*Br*cab),
+				corRR->fill(Sqrt(s12*s12 + p12*p12),
                     f*RR_alpha->getBinValue(ang)*RR_z->getBinValue(bz)*RR_z->getBinValue(az));
 			}
 		}
