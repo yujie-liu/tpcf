@@ -70,9 +70,9 @@ int main(int argc, char** argv)
 				if(RR_z->getBinValue(bz) == 0.) continue;
 				double Bz = RR_z->getBinMeanX(bz);
 				double Br = z2r(int_table, Bz);
-				double Dc = (Ar+Br)/2;
-				double K = omegaK*Dc*Dc/(6*D_H*D_H);
-				double s12 = (1+K) * (Ar+Br) * sab2;
+				double K1 = omegaK*Ar*Ar/(6*D_H*D_H);
+				double K2 = omegaK*Br*Br/(6*D_H*D_H);
+				double s12 = ((1+K1)*Ar + (1+K2)*Br) * sab2;
 				double p12 = Abs(Ar-Br) * cab2;
 				double f = 2.;
 				if(az == bz) {f = 1.;}
@@ -96,9 +96,9 @@ int main(int argc, char** argv)
 			if(RR_z->getBinValue(bz) == 0.) continue;
 			double Bz = RR_z->getBinMeanX(bz);
 			double Br = z2r(int_table, Bz);
-			double Dc = (Ar+Br)/2;
-			double K = omegaK*Dc*Dc/(6*D_H*D_H);
-			double s12 = (1+K) * (Ar+Br) * sab2;
+                        double K1 = omegaK*Ar*Ar/(6*D_H*D_H);
+                        double K2 = omegaK*Br*Br/(6*D_H*D_H);
+                        double s12 = ((1+K1)*Ar + (1+K2)*Br) * sab2;
 			double p12 = Abs(Ar-Br) * cab2;
 			corRD->fill(Sqrt(s12*s12 + p12*p12),
                   DR_alpha_z->getBinValue(b)*RR_z->getBinValue(bz));
@@ -116,11 +116,11 @@ int main(int argc, char** argv)
 		double Br = z2r(int_table, Bz);
 		double cab2 = Cos((DD_alpha_z_dz->getBinMeanZ(a))/2);
 		double sab2 = Sqrt(1-(cab2*cab2));
-		double Dc = (Ar+Br)/2;
-		double K = omegaK*Dc*Dc/(6*D_H*D_H);
-		double s12 = (1+K) * (Ar+Br) * sab2;
+		double K1 = omegaK*Ar*Ar/(6*D_H*D_H);
+		double K2 = omegaK*Br*Br/(6*D_H*D_H);
+		double s12 = ((1+K1)*Ar + (1+K2)*Br) * sab2;
 		double p12 = Abs(Ar-Br) * cab2;
-		corDD->fill(Sqrt(s12*s12 + p12+p12),
+		corDD->fill(Sqrt(s12*s12 + p12*p12),
 		    DD_alpha_z_dz->getBinValue(a));
 	}
 
