@@ -129,13 +129,16 @@ int main(int argc, char** argv)
 	TH1D* hnorm = dynamic_cast<TH1D*>(fin->Get("hnorm"));
 	TFile* fout = TFile::Open(fileout.c_str(), "recreate");
 	TH1D* htpcf = new TH1D("tpcf", "tpcf", sbins, smin, smax);
+	double normRR = 1/corRR->integral();
+	double normRD = 1/corRD->integral();
+	double normDD = 1/corDD->integral();
 	for(int b = 0 ; b < htpcf->GetNbinsX() ; ++b)
 	{
 		if(corRR->getBinValue(b) > 0)
 		{
-			double rr = corRR->getBinValue(b)/hnorm->GetBinContent(1);
-			double rd = corRD->getBinValue(b)/hnorm->GetBinContent(2);
-			double dd = corDD->getBinValue(b)/hnorm->GetBinContent(3);
+			double rr = normRR * corRR->getBinValue(b);
+			double rd = normRD * corRD->getBinValue(b);
+			double dd = normDD * corDD->getBinValue(b);
 			htpcf->SetBinContent(b+1, (dd-2*rd+rr)/rr);
 		}
 	}
