@@ -5,7 +5,6 @@ __version__ = 1.11
 
 import configparser
 import numpy
-import matplotlib.pyplot
 from sklearn.neighbors import KDTree, BallTree
 
 DEG2RAD = numpy.pi/180.
@@ -160,12 +159,9 @@ class CorrelationFunction():
         ''' Construct g(theta, r) radial angular separation histogram
         X axis is theta, Y axis is r
         Outputs:
-        + r_theta_hist_w: 2d numpy array
-            Dimension: (self.__nbins_theta, self.__nbins_r)
-            Values of weighted g(theta, r)
-        + r_theta_hist_u: 2d numpy array
-            Dimension: (self.__nbins_theta, self.__nbins_r)
-            Values of unweighted g(theta, r)
+        + r_theta_hist: list of two 2d arrays
+            Dimension of each array: (self.__nbins_theta, self.__nbins_r)
+            Values of weighted and unweighted g(theta, r) respectively
         + bins_theta: numpy array
             Binedges X of g(theta, r)
         + bins_r: numpy array
@@ -186,14 +182,10 @@ class CorrelationFunction():
         # weighted and unweighted
         r_theta_hist = numpy.zeros((2, nbins_theta, nbins_r))
 
-        # Because runtime is O(NlogM) where N is the number of points looping,
-        # and M is the number of points in Tree, create a BallTree based on the
-        # numbers of points in angular distribution and galaxies catalog.
-        # If m >= n, where m is the number of points in angular, and n is the
-        # number of points in galaxies catalog, then construct Tree using
-        # angular and then loop through galaxies catalog.
-        # If m < n, construct Tree using galaxies catalog and then loop through
-        # angular.
+        # The runtime of the Tree algorithms is O(NlogM) where N is the number
+        # of points looping through, and M is the number of points in Tree.
+        # Create Tree using the smaller number of points between galaxies
+        # catalog, and number of points in angular distribution.
         if angular.shape[0] >= self.data_cat.shape[0]:
             # create a BallTree based on angular points
             arc_tree = BallTree(angular[:, :2], leaf_size=40,
@@ -208,21 +200,20 @@ class CorrelationFunction():
                                                      r=theta_max,
                                                      return_distance=True)
                 temp_r = numpy.repeat(point[2], index[0].size)
-
-                # weighted
-                temp_weight = angular[:, 2][index[0]]
-                temp_hist, _, _ = numpy.histogram2d(theta[0], temp_r,
-                                                    bins=(nbins_theta, nbins_r),
-                                                    range=bins_range,
-                                                    weights=temp_weight*point[3])
-                r_theta_hist[0] += temp_hist
-
                 # unweighted
+                temp_weight = angular[:, 2][index[0]]
                 temp_hist, _, _ = numpy.histogram2d(theta[0], temp_r,
                                                     bins=(nbins_theta, nbins_r),
                                                     range=bins_range,
                                                     weights=temp_weight)
                 r_theta_hist[1] += temp_hist
+                # weighted
+                temp_weight = temp_weight*point[3]
+                temp_hist, _, _ = numpy.histogram2d(theta[0], temp_r,
+                                                    bins=(nbins_theta, nbins_r),
+                                                    range=bins_range,
+                                                    weights=temp_weight)
+                r_theta_hist[0] += temp_hist
         else:
             # create a BallTree  using galaxies catalog
             arc_tree = BallTree(self.data_cat[:, :2], leaf_size=40,
@@ -252,16 +243,14 @@ class CorrelationFunction():
                                                     weights=temp_weight)
                 r_theta_hist[1] += temp_hist
 
-        return r_theta_hist[0], r_theta_hist[1], self.__bins_theta, self.__bins_r
+        return r_theta_hist, self.__bins_theta, self.__bins_r
 
     # Construct RR(s)
     def rand_rand(self):
         ''' Construct random-random separation RR(s) using random catalog.
         Outputs:
-        + rand_rand_w: array
-            Values of weighted RR(s)
-        + rand_rand_u: array
-            Values of unweighted RR(s)
+        + rand_rand: list of two arrays
+            Values of weighted and unweighted RR(s) respectively
         + bins: array
             Binedges of RR(s)
             '''
@@ -311,17 +300,15 @@ class CorrelationFunction():
                                            weights=temp_weight)
             rand_rand[1] += temp_hist
 
-        return rand_rand[0], rand_rand[1], self.__bins_s
+        return rand_rand, self.__bins_s
 
     # Construct DR(s)
     def data_rand(self):
         ''' Construct data-random separation DR(s) using random and
         data catalogs.
         Outputs:
-        + data_data_w: array
-            Values of weighted DR(s)
-        + data_data_u: array
-            Values of unweighted DR(s)
+        + data_rand: list of two arrays
+            Values of weighted and unweighted DR(s) respectively
         + bins: array
             Binedges of DR(s)
             '''
@@ -334,7 +321,7 @@ class CorrelationFunction():
         r_hist = 1.*r_hist/self.rand_cat.shape[0]
 
         # Construct radial angular separation distribution g(theta, r)
-        r_theta_hist = self.radial_angular_distance()[:2]
+        r_theta_hist, _, _ = self.radial_angular_distance()
 
         # Integration over P(r) and g(theta, r)
         temp = [histogram2points(r_theta_hist[0], self.__bins_theta, self.__bins_r),
@@ -365,16 +352,14 @@ class CorrelationFunction():
                                            weights=temp_weight)
             data_rand[1] += temp_hist
 
-        return data_rand[0], data_rand[1], self.__bins_s
+        return data_rand, self.__bins_s
 
     # Construct DD(s)
     def data_data(self):
         ''' Construct data-data separation DD(s) using data catalog.
         Outputs:
-        + data_data_w: array
-            Values of weighted DD(s)
-        + data_data_u: array
-            Values of unweighted DD(s)
+        + data_data: list of two arrays
+            Values of weighted and unweighted DD(s) respectively
         + bins: array
             Binedges of DD(s)
             '''
@@ -423,23 +408,23 @@ class CorrelationFunction():
         data_data[1][0] -= self.data_cat.shape[0]
         data_data = data_data/2.
 
-        return data_data[0], data_data[1], self.__bins_s
+        return data_data, self.__bins_s
 
     # Construct tpcf(s) and tpcf(s)*s^2
     def correlation(self, rand_rand, data_rand, data_data, bins_s):
         ''' Construct two-point correlation function.
         Parameters:
-        + rand_rand, data_rand, data_data: numpy array
+        + rand_rand, data_rand, data_data: arrays
             Values of RR(s), DR(s), and DD(s) respectively. All arrays must
             have the same size
         + bins_s:   numpy array
             Binedges of RR(s), DR(s), DD(s)
         Output:
-        + correlation_function: numpy array
+        + correlation_function: array
             Two-point correlation function computed using equations:
             f = [DD(s)-2*DR(s)+RR(s)]/RR(s)
             If RR(s) = 0, then f = 0
-        + correlation_function: numpy array
+        + correlation_function_ss: array
             Two-point correlation function multiplied by s^2: f(s)s^2
             '''
         correlation_function = data_data-2*data_rand+rand_rand
@@ -498,53 +483,3 @@ class CorrelationFunction():
         norm_dr = n_data*n_rand
 
         return norm_rr, norm_dr, norm_dd
-
-
-def main():
-    ''' Main '''
-    tpcf = CorrelationFunction('config.cfg')
-
-    # Calculating normalized factor
-    norm = numpy.array([tpcf.normalization(weighted=True),
-                        tpcf.normalization(weighted=False)])
-    print(norm[0])
-    print(norm[1])
-
-    # Construct RR(s)
-    rand_rand_w, rand_rand_u, bins_s = tpcf.rand_rand()
-    rand_rand_w = rand_rand_w/norm[0][0]
-    rand_rand_u = rand_rand_u/norm[1][0]
-
-    # Construct DR(s)
-    data_rand_w, data_rand_u, _ = tpcf.data_rand()
-    data_rand_w = data_rand_w/norm[0][1]
-    data_rand_u = data_rand_u/norm[1][1]
-
-    # Construct DD(s)
-    data_data_w, data_data_u, _ = tpcf.data_data()
-    data_data_w = data_data_w/norm[0][2]
-    data_data_u = data_data_u/norm[1][2]
-
-    # Construct Tpcf
-    correlation_function_w = tpcf.correlation(rand_rand_w, data_rand_w,
-                                              data_data_w, bins_s)
-    correlation_function_u = tpcf.correlation(rand_rand_u, data_rand_u,
-                                              data_data_u, bins_s)
-
-    _, axes = matplotlib.pyplot.subplots(2, 2, figsize=(12, 8))
-    centers_s = 0.5*(bins_s[:-1]+bins_s[1:])
-    axes[0, 0].plot(centers_s, data_data_w)
-    axes[0, 0].plot(centers_s, data_rand_w)
-    axes[0, 0].plot(centers_s, rand_rand_w)
-    axes[0, 1].plot(centers_s, data_data_u)
-    axes[0, 1].plot(centers_s, data_rand_u)
-    axes[0, 1].plot(centers_s, rand_rand_u)
-    axes[1, 0].plot(centers_s, correlation_function_w[0])
-    axes[1, 0].plot(centers_s, correlation_function_u[0])
-    axes[1, 1].plot(centers_s, correlation_function_w[1])
-    axes[1, 1].plot(centers_s, correlation_function_u[1])
-    matplotlib.pyplot.savefig("test2.png")
-
-
-if __name__ == "__main__":
-    main()
