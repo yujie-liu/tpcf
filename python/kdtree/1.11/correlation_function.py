@@ -10,7 +10,8 @@ from sklearn.neighbors import KDTree, BallTree
 DEG2RAD = numpy.pi/180.
 RAD2DEG = 180./numpy.pi
 
-
+# TODO: this should be change to adapt fits format. The function now ask for
+# a .txt file with 4 columns (RA, DEC, R, WEIGHT)
 def import_data(fname):
     ''' Import data into 2-d numpy array
         Format: declination, right ascension, comoving distance, weight
