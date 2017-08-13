@@ -38,7 +38,7 @@ def main():
                                     bins_s) for i in range(2)]
 
     # Save histogram
-    numpy.savez("out/tpcf_South", RR=rand_rand, DR=data_rand, DD=data_data,
+    numpy.savez("out/tpcf_North", RR=rand_rand, DR=data_rand, DD=data_data,
                 TPCF=correlation[0], TPCFSS=correlation[1],
                 BINS=bins_s)
 
@@ -69,7 +69,7 @@ def main():
     figure.tight_layout()
 
 
-    matplotlib.pyplot.savefig("South.png", bbox_inches='tight')
+    matplotlib.pyplot.savefig("North.png", bbox_inches='tight')
 
 
 if __name__ == "__main__":
