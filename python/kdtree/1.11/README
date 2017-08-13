@@ -1,7 +1,7 @@
 # Copyright: University of Rochester DESI group.
 # Authors: Tri Nguyen, Segev BenZvi, Regina Demina
 
-# Guide to writting configuratiom files:
+# Guide to writting configuration files:
 # Configuration files should be divided into python configuration sections.
 # Example:
 # To create section "SAMPLE_SECTION" with parameter "sample_par" and value "sample_val"
