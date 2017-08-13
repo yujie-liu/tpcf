@@ -16,7 +16,7 @@ def import_data(fname):
     """ Import data into 2-d numpy array
         Format: declination, right ascension, comoving distance, weight
         """
-    catalog = numpy.genfromtxt(fname, skip_header=1)
+    catalog = numpy.genfromtxt(fname)
     col_temp = numpy.copy(catalog[:, 0])
     catalog[:, 0] = DEG2RAD*catalog[:, 1]
     catalog[:, 1] = DEG2RAD*col_temp
