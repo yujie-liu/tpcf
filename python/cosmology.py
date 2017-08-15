@@ -6,7 +6,7 @@ AstroPy has internally defined cosmologies based on recent CMB missions
 (see http://docs.astropy.org/en/stable/cosmology/#built-in-cosmologies).
 We'll use those parameters here to define comoving distance, but with
 two changes:
- 
+
 1) Define H0 = 100h km/s/Mpc; astropy default uses the measured value of H0.
 2) Allow for the possibile definition of nonzero curvature (not by default).
 """
@@ -54,7 +54,7 @@ class Cosmology:
 
     def z2r(self, z):
         """Convert redshift to comoving line-of-sight distance.
-        
+
         Args:
             z: redshift.
 

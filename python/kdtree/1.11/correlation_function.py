@@ -244,6 +244,7 @@ class CorrelationFunction():
 
         return r_theta_hist, self.__bins_theta, self.__bins_r
 
+
     def rand_rand(self, leaf=40):
         """ Construct separation distribution RR(s) between pairs of randoms.
         Inputs:
@@ -278,6 +279,7 @@ class CorrelationFunction():
         temp_points = [hist2point(weight[0], self.__bins_theta, self.__bins_r),
                        hist2point(weight[1], self.__bins_theta, self.__bins_r)]
         center_r = 0.5*(self.__bins_r[:-1]+self.__bins_r[1:])
+        center_r = center_r[r_hist[1] != 0]
 
         # Define weighted and unweighted RR(s) as two one-dimensional
         # histograms respectively.
@@ -287,7 +289,7 @@ class CorrelationFunction():
 
         # Integration
         print("Construct RR(s)")
-        for i, temp_r in enumerate(center_r[r_hist[1] != 0]):
+        for i, temp_r in enumerate(center_r):
             if i % 100 is 0:
                 print(i)
             temp_s = get_distance(temp_r, temp_points[0][:, 1],
