@@ -14,8 +14,13 @@ def main():
     """ Run and plot two-point correlation function using
     class correlation_function.CorrelationFunction """
 
-    # First define cosmological parameters
+    # First define and set cosmological parameters
+    # H0=Hubble constant at z=0
+    # Om0=Omega matter at z=0
+    # Ob0=Omega baryonic matter at z=0
+    # Ode0=Omega dark energy at z=0
     cosmo = Cosmology()
+    cosmo.set_model(H0=100, Om0=0.307, Ob0=0.0486, Ode0=0.693)
 
     # Constructor takes in configuration file names
     tpcf = CorrelationFunction('sample_config.cfg')
