@@ -20,18 +20,48 @@ struct Galaxy
 {
 	double phi;
 	double theta;
-	double r;       // change to z, allowing new cosmology
+	double z;
 	double w;
 };
 
-// Note: assumes flat space. Would want to replace with
-// Dc, Dm to get distance given z and a particular cosmology
-inline double dist(const Galaxy& A, const Galaxy& B)
+inline double alpha(const Galaxy& A, const Galaxy& B)
 {
-	double C = Cos(A.phi)*Sin(A.theta) * Cos(B.phi)*Sin(B.theta) +
+	double cdist = Cos(A.phi)*Sin(A.theta) * Cos(B.phi)*Sin(B.theta) +
              Sin(A.phi)*Sin(A.theta) * Sin(B.phi)*Sin(B.theta) +
              Cos(A.theta) * Cos(B.theta);
-	return Sqrt(A.r*A.r + B.r*B.r - 2.*B.r*A.r*C);
+	return ACos(cdist);
+}
+
+// Galaxy 2D angular position and weight, using
+// direction cosines of theta and phi
+struct Galaxy_ang
+{
+        double w;
+        double cphi;
+        double sphi;
+        double ctheta;
+        double stheta;
+};
+
+inline double Calpha(const Galaxy_ang& A, const Galaxy_ang& B)
+{
+	double cdist = A.cphi*A.stheta * B.cphi*B.stheta +
+	     A.sphi*A.stheta * B.sphi*B.stheta +
+	     A.ctheta * B.ctheta;
+	return cdist;
+}
+
+inline double Calpha(const Galaxy& A, const Galaxy_ang& B)
+{
+	double cdist = Cos(A.phi)*Sin(A.theta) * B.cphi*B.stheta +
+	     Sin(A.phi)*Sin(A.theta) * B.sphi*B.stheta +
+	     Cos(A.theta) * B.ctheta;
+	return cdist;
+}
+
+inline double z2r(const Hist1D* inttbl, const double& z)
+{
+        return inttbl->getBinValue(z);
 }
 
 // Angular map for galaxy positions. Hard-codes rectangular bins
@@ -92,17 +122,6 @@ template< typename T > class Map2D
 		}
 };
 
-// Galaxy 2D angular position and weight, using
-// direction cosines of theta and phi
-struct Galaxy_ang
-{
-	double w;
-	double cphi;
-	double sphi;
-	double ctheta;
-	double stheta;
-};
-
 class Correlations
 {
 	private:
@@ -110,18 +129,22 @@ class Correlations
 		double thetamax_;
 		double phimin_;
 		double phimax_;
-		double rmin_;
-		double rmax_;
+		double zmin_;
+		double zmax_;
+		double amax_;
 		int thetaregions_;
 		int phiregions_;
-		int rbins_;
+		int zbins_;
 		int abins_;
 		int thetabins_;
 		int phibins_;
 		double smin_;
 		double smax_;
 		int sbins_;
+		double omegaK;
+		double D_H;
 		string outfile_;
+		string intfile_;
 
 		Map2D<Galaxy>* D;
 		Map2D<Galaxy_ang>* R;
@@ -130,10 +153,11 @@ class Correlations
 		double rw = 0.;
 		double rww = 0.;
 
-		Hist1D* RR_r = nullptr;	
+		Hist1D* RR_z = nullptr;	
 		Hist1D* RR_alpha = nullptr;
-		Hist2D* DR_alpha_r = nullptr;
-		Hist1D* DD_cor = nullptr;
+		Hist2D* DR_alpha_z = nullptr;
+		Hist1D* corDD = nullptr;
+		Hist1D* int_table = nullptr;
 		TH1D* htime = nullptr;
 		TH1D* hnorm = nullptr;
 
@@ -157,7 +181,7 @@ class Correlations
 				MC_phi_theta.fill(pos.phi, pos.theta);
 
         // Fill radial distribution with weights.
-				RR_r->fill(pos.r, pos.w);
+				RR_z->fill(pos.z, pos.w);
 
         // Track weight sums and sum^2
 				rw += pos.w;
@@ -217,9 +241,7 @@ class Correlations
 				{
 					for(const Galaxy_ang& gb : vb)
 					{
-						double dist = ga.cphi*ga.stheta * gb.cphi*gb.stheta;
-						dist += ga.sphi*ga.stheta *  gb.sphi*gb.stheta;
-						dist += ga.ctheta		  *  gb.ctheta;
+						double dist = Calpha(ga, gb);
 						RR_alpha->fill(ACos(dist), ga.w*gb.w);	
 					}
 				}
@@ -234,9 +256,7 @@ class Correlations
 					for(size_t y = 0 ; y <= x ; ++y)
 					{   
 						const Galaxy_ang& gb = va[y];
-						double dist = ga.cphi*ga.stheta * gb.cphi*gb.stheta;
-						dist += ga.sphi*ga.stheta *  gb.sphi*gb.stheta;
-						dist += ga.ctheta		  *  gb.ctheta;
+						double dist = Calpha(ga, gb);
 						double f = 1.;
 						if(x == y) {f = 0.5;}
 						RR_alpha->fill(ACos(dist), f*ga.w*gb.w);	
@@ -252,18 +272,10 @@ class Correlations
 			const vector<Galaxy_ang>& vb = R->getBinValue(binb);
 			for(const Galaxy& ga : va)
 			{
-				double vx = Cos(ga.phi)*Sin(ga.theta);
-				double vy = Sin(ga.phi)*Sin(ga.theta);
-				double vz = Cos(ga.theta);
 				for(const Galaxy_ang& gb : vb)
 				{
-					double dist = vx *  gb.cphi*gb.stheta;
-					dist += vy *  gb.sphi*gb.stheta;
-					dist += vz *  gb.ctheta;
-
-          // Note: calculation as a function of r assumes a
-          // cosmology. Replace with z?
-					DR_alpha_r->fill(ga.r, ACos(dist), ga.w*gb.w);	
+					double dist = Calpha(ga, gb);
+					DR_alpha_z->fill(ga.z, ACos(dist), ga.w*gb.w);	
 				}
 			}
 		}
@@ -280,9 +292,21 @@ class Correlations
 				{
 					for(const Galaxy& gb : vb)
 					{
-            // 1D histogram of DD as a function of 3D separation.
-            // Note: distance calculation assumes flat space.
-						DD_cor->fill(dist(ga,gb), ga.w*gb.w);
+                                                if(zmin_ >= ga.z) continue;
+                                                if(zmin_ >= gb.z) continue;
+                                                if(zmax_ <= ga.z) continue;
+                                                if(zmax_ <= gb.z) continue;
+                                                double Ar = z2r(int_table, ga.z);
+						if(Ar == 0) continue;
+                                                double Br = z2r(int_table, gb.z);
+						if(Br == 0) continue;
+						double cab2 = Cos(alpha(ga,gb)/2);
+						double sab2 = Sqrt(1 - cab2*cab2);
+                                		double K1 = omegaK*Ar*Ar/(6*D_H*D_H);
+                                		double K2 = omegaK*Br*Br/(6*D_H*D_H);
+                		                double s12 = ((1+K1)*Ar + (1+K2)*Br) * sab2;
+		                                double p12 = Abs(Ar-Br) * cab2;
+						corDD->fill(Sqrt(s12*s12 + p12*p12), ga.w*gb.w);
 					}
 				}
 			}
@@ -293,9 +317,21 @@ class Correlations
 				{   
 					for(size_t y = 0 ; y < x ; ++y)
 					{   
-            // 1D histogram of DD as a function of 3D separation.
-            // Note: distance calculation assumes flat space.
-						DD_cor->fill(dist(va[x],va[y]), va[x].w*va[y].w);
+						if(zmin_ >= va[x].z) continue;
+						if(zmin_ >= va[y].z) continue;
+						if(zmax_ <= va[x].z) continue;
+						if(zmax_ <= va[y].z) continue;
+                                                double Ar = z2r(int_table, va[x].z);
+						if(Ar == 0) continue;
+                                                double Br = z2r(int_table, va[y].z);
+						if(Br == 0) continue;
+                                                double cab2 = Sqrt(alpha(va[x],va[y])/2);
+                                                double sab2 = Sqrt(1 - cab2*cab2);
+                                                double K1 = omegaK*Ar*Ar/(6*D_H*D_H);
+                                                double K2 = omegaK*Br*Br/(6*D_H*D_H);
+                                                double s12 = ((1+K1)*Ar + (1+K2)*Br) * sab2;
+                                                double p12 = Abs(Ar-Br) * cab2;
+                                                corDD->fill(Sqrt(s12*s12 + p12*p12), va[x].w*va[y].w);
 					}
 				}
 			}
@@ -325,28 +361,34 @@ class Correlations
 	{
 		ConfigParser cfg(configfile);
 		outfile_ = cfg.Get<string>("file_out");
+	        intfile_ = cfg.Get<string>("integral_file");
 		thetamin_ = cfg.Get<double>("theta_min");
 		thetamax_ = cfg.Get<double>("theta_max");
 		phimin_ = cfg.Get<double>("phi_min");
 		phimax_ = cfg.Get<double>("phi_max");
-		rmin_ = cfg.Get<double>("r_min");
-		rmax_ = cfg.Get<double>("r_max");
+		zmin_ = cfg.Get<double>("z_min");
+		zmax_ = cfg.Get<double>("z_max");
+		amax_ = cfg.Get<double>("alpha_max");
 		thetaregions_ = cfg.Get<int>("theta_regions");
 		phiregions_ = cfg.Get<int>("phi_regions");
 		thetabins_ = cfg.Get<int>("theta_bins");
 		phibins_ = cfg.Get<int>("phi_bins");
-		rbins_ = cfg.Get<int>("r_bins");
+		zbins_ = cfg.Get<int>("z_bins");
 		abins_ = cfg.Get<int>("alpha_bins");
 		smin_ = cfg.Get<double>("s_min");
 		smax_ = cfg.Get<double>("s_max");
 		sbins_ = cfg.Get<int>("s_bins");
 
+        	int_table = new Hist1D(intfile_, "int_table");
+        	omegaK = cfg.Get<double>("omegaK");
+	        D_H = 300000/cfg.Get<double>("H_0");
+
 		R = new Map2D<Galaxy_ang>(phiregions_, phimin_, phimax_, thetaregions_, thetamin_, thetamax_);
 		D = new Map2D<Galaxy>(phiregions_, phimin_, phimax_, thetaregions_, thetamin_, thetamax_);
-		RR_r = new Hist1D(rbins_, rmin_, rmax_);
-		RR_alpha = new Hist1D(abins_, 0, Pi());
-		DR_alpha_r = new Hist2D(rbins_, rmin_, rmax_, abins_, 0, Pi());
-		DD_cor = new Hist1D(sbins_, smin_, smax_);
+		RR_z = new Hist1D(zbins_, zmin_, zmax_);
+		RR_alpha = new Hist1D(abins_, 0, amax_);
+		DR_alpha_z = new Hist2D(zbins_, zmin_, zmax_, abins_, 0, amax_);
+		corDD = new Hist1D(sbins_, smin_, smax_);
 
 		htime = new TH1D("htime", "htime", 10, 0, 10);
 		hnorm = new TH1D("hnorm", "hnorm", 3, 0, 3);
@@ -358,10 +400,10 @@ class Correlations
 		~Correlations()
 		{
 			TFile* fout = TFile::Open(outfile_.c_str(), "recreate");
-			RR_r->writeTH1D("RR_r");
+			RR_z->writeTH1D("RR_z");
 			RR_alpha->writeTH1D("RR_alpha");
-			DR_alpha_r->writeTH2D("DR_alpha_r");
-			DD_cor->writeTH1D("DD_cor");
+			DR_alpha_z->writeTH2D("DR_alpha_z");
+			corDD->writeTH1D("corDD");
 			htime->Write("htime");
 			hnorm->Write("hnorm");
 			fout->Write();
@@ -378,7 +420,7 @@ class Correlations
 				hnorm->SetBinContent(1, (rw*rw-rww)*0.5);
 				hnorm->SetBinContent(2, rw*dw);
 				hnorm->SetBinContent(3, (dw*dw-dww)*0.5);
-				cout << "Normalization RR = " <<  hnorm->GetBinContent(1) << ", RD = " << hnorm->GetBinContent(2) << ", DD = " << hnorm->GetBinContent(3) << endl; 
+				cout << "Normalization RR = " <<  hnorm->GetBinContent(1) << ", RD = " << hnorm->GetBinContent(2) << ", DD = " << hnorm->GetBinContent(3) << endl;
 			}
 			int av_jobs = R->getNumBins()*5;
 			cout << "Job number: " << job_n << ", total number of jobs: " << job_tot << ", available jobs: " << av_jobs << endl;

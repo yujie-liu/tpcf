@@ -11,27 +11,43 @@
 #include <vector>
 
 #include "hist_fast.h"
+#include "ConfigParser.h"
 
 using namespace std;
 using namespace TMath;
 
+inline double z2r(const Hist1D* inttbl, const double& z)
+{
+        return inttbl->getBinValue(z);
+}
+
 int main(int argc, char** argv)
 {
-	string filein(argv[1]);
-	string fileout(argv[2]);
+	string configfile(argv[1]);
+	ConfigParser cfg(configfile);
 
-	Hist1D* corDD = new Hist1D(filein, "DD_cor");	
+	string filein = cfg.Get<string>("step2_file_in");
+	string fileout = cfg.Get<string>("step2_file_out");
+	string intfile = cfg.Get<string>("integral_file");
+	int sbins = cfg.Get<int>("s_bins");
+	double smin = cfg.Get<double>("s_min");
+	double smax = cfg.Get<double>("s_max");
 
-	Hist1D* corRR = new Hist1D(corDD->getNumBins(), corDD->getXMin(), corDD->getXMax());
-	Hist1D* corRD = new Hist1D(corDD->getNumBins(), corDD->getXMin(), corDD->getXMax());
+	Hist1D* corDD = new Hist1D(filein, "corDD");
+	Hist1D* corRR = new Hist1D(sbins, smin, smax);
+	Hist1D* corRD = new Hist1D(sbins, smin, smax);
 
 	Hist1D* RR_alpha = new Hist1D(filein, "RR_alpha");	
-	Hist1D* RR_r = new Hist1D(filein, "RR_r");	
-	Hist2D* DR_alpha_r = new Hist2D(filein, "DR_alpha_r");
+	Hist1D* RR_z = new Hist1D(filein, "RR_z");	
+	Hist2D* DR_alpha_z = new Hist2D(filein, "DR_alpha_z");
 
-	double rsum = RR_r->getEntries();
-	rsum = RR_r->scale(1./rsum);
-	cout << rsum << endl;
+	Hist1D* int_table = new Hist1D(intfile, "int_table");
+	double omegaK = cfg.Get<double>("omegaK");
+	double D_H = 300000/cfg.Get<double>("H0");
+
+	double zsum = RR_z->getEntries();
+	zsum = RR_z->scale(1./zsum);
+	cout << zsum << endl;
 	
 	//RR
 	cout << "start RR" << endl;
@@ -39,44 +55,52 @@ int main(int argc, char** argv)
 	for(int ang = 0 ; ang < RR_alpha->getNumBins() ; ++ang)
 	{
 		if(RR_alpha->getBinValue(ang) == 0) continue;
-		double cab = Cos(RR_alpha->getBinMeanX(ang));
+		double cab2 = Cos((RR_alpha->getBinMeanX(ang))/2);
+		double sab2 = Sqrt(1-(cab2*cab2));
     // Integrate over radial distribution along one axis
-		for(int ar = 0 ; ar < RR_r->getNumBins() ; ++ar)
+		for(int az = 0 ; az < RR_z->getNumBins() ; ++az)
 		{
-			if(RR_r->getBinValue(ar) == 0.) continue;
-			double Ar = RR_r->getBinMeanX(ar);
+			if(RR_z->getBinValue(az) == 0.) continue;
+			double Az = RR_z->getBinMeanX(az);
+			double Ar = z2r(int_table, Az);
       // Integrate over radial distribution along other axis
-			for(int br = 0 ; br <= ar ; ++br)
+			for(int bz = 0 ; bz <= az ; ++bz)
 			{
-				if(RR_r->getBinValue(br) == 0.) continue;
-				double Br = RR_r->getBinMeanX(br);
+				if(RR_z->getBinValue(bz) == 0.) continue;
+				double Bz = RR_z->getBinMeanX(bz);
+				double Br = z2r(int_table, Bz);
+				double K1 = omegaK*Ar*Ar/(6*D_H*D_H);
+				double K2 = omegaK*Br*Br/(6*D_H*D_H);
+				double s12 = ((1+K1)*Ar + (1+K2)*Br) * sab2;
+				double p12 = Abs(Ar-Br) * cab2;
 				double f = 2.;
-				if(ar == br) {f = 1.;}
-        // Note: s calculation below ignores curvature, assumes isotropy
-        // To do:
-        //  1) Compute Az, Bz in terms of redshifts, not precomputed radial dist
-        //  2) Convert Az, Bz to Ar, Br assuming a particular cosmology
-        //  3) Calculate distances using formulas 6-8 in the MNRAS paper
-				corRR->fill(Sqrt(Ar*Ar + Br*Br - 2.*Ar*Br*cab),
-                    f*RR_alpha->getBinValue(ang)*RR_r->getBinValue(br)*RR_r->getBinValue(ar));
+				if(az == bz) {f = 1.;}
+				corRR->fill(Sqrt(s12*s12 + p12*p12),
+                    f*RR_alpha->getBinValue(ang)*RR_z->getBinValue(bz)*RR_z->getBinValue(az));
 			}
 		}
 	}
 
 	//RD
 	cout << "start RD" << endl;
-	for(int b = 0 ; b < DR_alpha_r->getNumBins() ; ++b)
+	for(int b = 0 ; b < DR_alpha_z->getNumBins() ; ++b)
 	{
-		if(DR_alpha_r->getBinValue(b) == 0) continue;
-		double Ar = DR_alpha_r->getBinMeanX(b);
-		double cab = Cos(DR_alpha_r->getBinMeanY(b));
-		for(int br = 0 ; br < RR_r->getNumBins() ; ++br)
+		if(DR_alpha_z->getBinValue(b) == 0) continue;
+		double Az = DR_alpha_z->getBinMeanX(b);
+		double Ar = z2r(int_table, Az);
+		double cab2 = Cos((DR_alpha_z->getBinMeanY(b))/2);
+		double sab2 = Sqrt(1-(cab2*cab2));
+		for(int bz = 0 ; bz < RR_z->getNumBins() ; ++bz)
 		{
-			if(RR_r->getBinValue(br) == 0.) continue;
-			double Br = RR_r->getBinMeanX(br);
-      // Note: s calculation ignores curvature and assumes isotropy
-			corRD->fill(Sqrt(Ar*Ar + Br*Br - 2.*Ar*Br*cab),
-                  DR_alpha_r->getBinValue(b)*RR_r->getBinValue(br));
+			if(RR_z->getBinValue(bz) == 0.) continue;
+			double Bz = RR_z->getBinMeanX(bz);
+			double Br = z2r(int_table, Bz);
+                        double K1 = omegaK*Ar*Ar/(6*D_H*D_H);
+                        double K2 = omegaK*Br*Br/(6*D_H*D_H);
+                        double s12 = ((1+K1)*Ar + (1+K2)*Br) * sab2;
+			double p12 = Abs(Ar-Br) * cab2;
+			corRD->fill(Sqrt(s12*s12 + p12*p12),
+                  DR_alpha_z->getBinValue(b)*RR_z->getBinValue(bz));
 		}
 	}
 
@@ -84,14 +108,16 @@ int main(int argc, char** argv)
 	TH1D* htime = dynamic_cast<TH1D*>(fin->Get("htime"));
 	TH1D* hnorm = dynamic_cast<TH1D*>(fin->Get("hnorm"));
 	TFile* fout = TFile::Open(fileout.c_str(), "recreate");
-	TH1D* htpcf = new TH1D("tpcf", "tpcf", corDD->getNumBins(), corDD->getXMin(), corDD->getXMax());
+	TH1D* htpcf = new TH1D("tpcf", "tpcf", sbins, smin, smax);
+	double normRR = corDD->integral()/corRR->integral();
+	double normRD = corDD->integral()/corRD->integral();
 	for(int b = 0 ; b < htpcf->GetNbinsX() ; ++b)
 	{
 		if(corRR->getBinValue(b) > 0)
 		{
-			double rr = corRR->getBinValue(b)/hnorm->GetBinContent(1);
-			double rd = corRD->getBinValue(b)/hnorm->GetBinContent(2);
-			double dd = corDD->getBinValue(b)/hnorm->GetBinContent(3);
+			double rr = normRR * corRR->getBinValue(b);
+			double rd = normRD * corRD->getBinValue(b);
+			double dd = corDD->getBinValue(b);
 			htpcf->SetBinContent(b+1, (dd-2*rd+rr)/rr);
 		}
 	}

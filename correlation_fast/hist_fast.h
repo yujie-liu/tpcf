@@ -1,5 +1,6 @@
 #include <TH1D.h>
 #include <TH2D.h>
+#include <TH3D.h>
 #include <TMath.h>
 
 #include <iostream>
@@ -8,6 +9,201 @@
 
 using namespace std;
 using namespace TMath;
+
+class Hist3D
+{
+        private:
+                size_t nxbins_, nybins_, nzbins_;
+                double xmin_, xmax_;
+                double ymin_, ymax_;
+		double zmin_, zmax_;
+                vector<double> data_n;
+                vector<double> data_w;
+                vector<double> data_w2;
+                vector<double> data_x;
+                vector<double> data_y;
+		vector<double> data_z;
+        public:
+                Hist3D(size_t nxbins, double xmin, double xmax,
+           size_t nybins, double ymin, double ymax, size_t nzbins, double zmin, double zmax)
+           :
+           nxbins_(nxbins), nybins_(nybins), nzbins_(nzbins), xmin_(xmin), xmax_(xmax), ymin_(ymin), ymax_(ymax), zmin_(zmin), zmax_(zmax),
+           data_n(nxbins*nybins*nzbins, 0.), data_w(nxbins*nybins*nzbins, 0.), data_w2(nxbins*nybins*nzbins, 0.),
+           data_x(nxbins*nybins*nzbins, 0.), data_y(nxbins*nybins*nzbins, 0.), data_z(nxbins*nybins*nzbins, 0.)
+          {
+          }
+
+                int getXBin(double x) const {return (x-xmin_)*nxbins_/(xmax_ - xmin_);}
+                int getYBin(double y) const {return (y-ymin_)*nybins_/(ymax_ - ymin_);}
+		int getZBin(double z) const {return (z-zmin_)*nzbins_/(zmax_ - zmin_);}
+                int getBin(double x, double y, double z){return getXBin(x) + nxbins_ * getYBin(y) + nxbins_ * nybins_ * getZBin(z);}
+                void fill(double x, double y, double z, double w = 1.)
+                {
+                        int bin = getBin(x, y, z);
+                        if(bin < 0 || bin >= int(data_n.size())) return;
+
+                        data_n[bin] += 1;
+                        data_w[bin] += w;
+                        data_w2[bin] += w*w;
+                        data_x[bin] += x;
+                        data_y[bin] += y;
+			data_z[bin] += z;
+                }
+
+                int getBinByBins(int xbin, int ybin, int zbin) const {return xbin + nxbins_ * ybin + nxbins_ * nybins_ * zbin;}
+
+                double getBinEntries(int bin)
+                {
+                        return data_n[bin];
+                }
+                double getBinEntries(int xbin, int ybin, int zbin)
+                {
+                        return getBinEntries(getBinByBins(xbin, ybin, zbin));
+                }
+                double getBinValue(int bin)
+                {
+                        return data_w[bin];
+                }
+                double getBinValue(int xbin, int ybin, int zbin)
+                {
+                        return getBinValue(getBinByBins(xbin, ybin, zbin));
+                }
+                double getBinUnc(int bin)
+                {
+                        if(data_n[bin] > 1)
+                        {
+                                return Sqrt(1./(data_n[bin] -1) *(data_w2[bin] - data_w[bin]*data_w[bin]/data_n[bin]));
+                        }
+                        else
+                        {
+                                return 0.;
+                        }
+                }
+                double getBinUnc(int xbin, int ybin, int zbin)
+                {
+                        return getBinUnc(getBinByBins(xbin, ybin, zbin));
+                }
+                double getBinMeanX(int bin)
+                {
+                        if(data_n[bin] > 0)
+                        {
+                                return data_x[bin]/data_n[bin];
+                        }
+                        else
+                        {
+                                return (xmax_ - xmin_)/nxbins_ * (0.5 + (bin % nxbins_)) + xmin_;
+                        }
+                }
+                double getBinMeanX(int xbin, int ybin, int zbin)
+                {
+                        return getBinMeanX(getBinByBins(xbin, ybin, zbin));
+                }
+                double getBinMeanY(int bin)
+                {
+                        if(data_n[bin] > 0)
+                        {
+                                return data_y[bin]/data_n[bin];
+                        }
+                        else
+                        {
+                                return (ymax_ - ymin_)/nybins_ * (0.5 + ((bin % (nxbins_*nybins_)) / nxbins_)) + ymin_;
+                        }
+                }
+                double getBinMeanY(int xbin, int ybin, int zbin)
+                {
+                        return getBinMeanY(getBinByBins(xbin, ybin, zbin));
+                }
+		double getBinMeanZ(int bin)
+		{
+			if(data_n[bin] > 0)
+			{
+				return data_z[bin]/data_n[bin];
+			}
+			else
+			{
+				return (zmax_ - zmin_)/nzbins_ * (0.5 + (bin / (nxbins_ * nybins_))) + zmin_;
+			}
+		}
+		double getBinMeanZ(int xbin, int ybin, int zbin)
+		{
+			return getBinMeanZ(getBinByBins(xbin, ybin, zbin));
+		}
+                int getNumBinsX() const {return nxbins_;}
+                int getNumBinsY() const {return nybins_;}
+		int getNumBinsZ() const {return nzbins_;}
+                int getNumBins() const {return nxbins_*nybins_*nzbins_;}
+                TH3D* writeTH3D(string name)
+                {
+                        TH3D* h_n = new TH3D((name+"_n").c_str(), (name+"_n").c_str(), getNumBinsX(), xmin_, xmax_, getNumBinsY(), ymin_, ymax_, getNumBinsZ(), zmin_, zmax_);
+                        TH3D* h_w = new TH3D((name+"_w").c_str(), (name+"_w").c_str(), getNumBinsX(), xmin_, xmax_, getNumBinsY(), ymin_, ymax_, getNumBinsZ(), zmin_, zmax_);
+                        TH3D* h_w2 = new TH3D((name+"_w2").c_str(), (name+"_w2").c_str(), getNumBinsX(), xmin_, xmax_, getNumBinsY(), ymin_, ymax_, getNumBinsZ(), zmin_, zmax_);
+                        TH3D* h_x = new TH3D((name+"_x").c_str(), (name+"_x").c_str(), getNumBinsX(), xmin_, xmax_, getNumBinsY(), ymin_, ymax_, getNumBinsZ(), zmin_, zmax_);
+                        TH3D* h_y = new TH3D((name+"_y").c_str(), (name+"_y").c_str(), getNumBinsX(), xmin_, xmax_, getNumBinsY(), ymin_, ymax_, getNumBinsZ(), zmin_, zmax_);
+			TH3D* h_z = new TH3D((name+"_z").c_str(), (name+"_z").c_str(), getNumBinsX(), xmin_, xmax_, getNumBinsY(), ymin_, ymax_, getNumBinsZ(), zmin_, zmax_);
+                        for(int bx = 0 ; bx < getNumBinsX() ; ++bx)
+                        {
+                                for(int by = 0 ; by < getNumBinsY() ; ++by)
+                                {
+					for(int bz = 0 ; bz < getNumBinsZ() ; ++bz)
+					{
+                                        	h_w->SetBinContent(bx+1, by+1, bz+1, data_w[getBinByBins(bx, by, bz)]);
+                                        	h_w->SetBinError(bx+1, by+1, bz+1, getBinUnc(bx, by, bz));
+                                        	h_w2->SetBinContent(bx+1, by+1, bz+1, data_w2[getBinByBins(bx, by, bz)]);
+                                        	h_n->SetBinContent(bx+1, by+1, bz+1, data_n[getBinByBins(bx, by, bz)]);
+                                        	h_n->SetBinError(bx+1, by+1, bz+1, Sqrt(data_n[getBinByBins(bx, by, bz)]));
+                                        	h_x->SetBinContent(bx+1, by+1, bz+1, data_x[getBinByBins(bx, by, bz)]);
+                                        	h_y->SetBinContent(bx+1, by+1, bz+1, data_y[getBinByBins(bx, by, bz)]);
+						h_z->SetBinContent(bx+1, by+1, bz+1, data_z[getBinByBins(bx, by, bz)]);
+					}
+                                }
+                        }
+                        return h_w;
+                }
+                Hist3D(string filename, string name)
+                {
+                        TDirectory* cdir = gDirectory;
+                        TFile* fin = TFile::Open(filename.c_str());
+                        TH3D* h_n = dynamic_cast<TH3D*>(fin->Get((name+"_n").c_str()));
+                        TH3D* h_w = dynamic_cast<TH3D*>(fin->Get((name+"_w").c_str()));
+                        TH3D* h_w2 = dynamic_cast<TH3D*>(fin->Get((name+"_w2").c_str()));
+                        TH3D* h_x = dynamic_cast<TH3D*>(fin->Get((name+"_x").c_str()));
+                        TH3D* h_y = dynamic_cast<TH3D*>(fin->Get((name+"_y").c_str()));
+			TH3D* h_z = dynamic_cast<TH3D*>(fin->Get((name+"_z").c_str()));
+                        nxbins_ = h_n->GetNbinsX();
+                        nybins_ = h_n->GetNbinsY();
+			nzbins_ = h_n->GetNbinsZ();
+                        xmin_ = h_n->GetXaxis()->GetXmin();
+                        xmax_ = h_n->GetXaxis()->GetXmax();
+                        ymin_ = h_n->GetYaxis()->GetXmin();
+                        ymax_ = h_n->GetYaxis()->GetXmax();
+			zmin_ = h_n->GetZaxis()->GetXmin();
+			zmax_ = h_n->GetZaxis()->GetXmax();
+                        data_n.resize(nxbins_*nybins_*nzbins_);
+                        data_w.resize(nxbins_*nybins_*nzbins_);
+                        data_w2.resize(nxbins_*nybins_*nzbins_);
+                        data_x.resize(nxbins_*nybins_*nzbins_);
+                        data_y.resize(nxbins_*nybins_*nzbins_);
+			data_z.resize(nxbins_*nybins_*nzbins_);
+                        for(int bx = 0 ; bx < getNumBinsX() ; ++bx)
+                        {
+                                for(int by = 0 ; by < getNumBinsY() ; ++by)
+                                {
+					for(int bz = 0 ; bz < getNumBinsZ() ; ++bz)
+					{
+	                                        data_n[getBinByBins(bx, by, bz)] = h_n->GetBinContent(bx+1, by+1, bz+1);
+        	                                data_w[getBinByBins(bx, by, bz)] = h_w->GetBinContent(bx+1, by+1, bz+1);
+                	                        data_w2[getBinByBins(bx, by, bz)] = h_w2->GetBinContent(bx+1, by+1, bz+1);
+                        	                data_x[getBinByBins(bx, by, bz)] = h_x->GetBinContent(bx+1, by+1, bz+1);
+                                	        data_y[getBinByBins(bx, by, bz)] = h_y->GetBinContent(bx+1, by+1, bz+1);
+						data_z[getBinByBins(bx, by, bz)] = h_z->GetBinContent(bx+1, by+1, bz+1);
+					}
+                                }
+                        }
+                        delete fin;
+                        cdir->cd();
+                }
+
+};
 
 class Hist2D
 {
@@ -195,6 +391,8 @@ class Hist1D
 			data_x[bin] += x;
 		}
 		int getNumBins() const {return nbins_;}
+		int getBin(double x) const {return (x-min_)*nbins_/(max_ - min_);}
+
 		double getXMin() const {return min_;}
 		double getXMax() const {return max_;}
 
@@ -202,9 +400,13 @@ class Hist1D
 		{
 			return data_n[bin];
 		}
-		double getBinValue(int bin)
+		double getBinValue(int bin) const
 		{
 			return data_w[bin];
+		}
+		double getBinValue(double x) const
+		{
+			return getBinValue(getBin(x));
 		}
 		double getBinUnc(int bin)
 		{
