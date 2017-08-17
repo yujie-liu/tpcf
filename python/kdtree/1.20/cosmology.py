@@ -46,7 +46,7 @@ class Cosmology():
         # default table parameters
         z_min = 0.
         z_max = 3.0
-        step = 0.0001
+        step = 0.00001
         # if cache file does not exist, create a table
         isfile = os.path.isfile(self.__cache_str())
         if not isfile:
@@ -82,7 +82,7 @@ class Cosmology():
                   Ode0=0.693, Tcmb0=2.725,
                   Neff=3.05, m_nu=[0., 0., 0.06]):
         """ Set cosmology parameters
-        Input:
+        Inputs:
         + H0: int, float (default=100)
             Hubble constant at present (z=0). Unit in km/(Mpc*s)
         + Om0: int, float (default=0.307)
@@ -117,5 +117,14 @@ class Cosmology():
         self.__set_comoving_table()
 
     def z2r(self, z):
-        """TODO: add comment"""
+        """Convert redshift z into comoving distance r by linear interpolating
+        from comoving distance table.
+        Inputs:
+        + z: int, float
+            Redshift. Must be greater than or equal to 0, and less than or equal
+            to 3.
+        Outputs:
+        + comoving distance: float
+            Return comoving distance given redshift and set cosmology.
+        """
         return interpolate.PchipInterpolator(*self.__comoving_table.T)(z)
