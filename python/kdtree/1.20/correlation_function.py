@@ -36,8 +36,7 @@ def import_fits(fname_key, fits_reader):
         temp_weight_noz = tbdata[fits_reader["WEIGHT_NOZ"]]
         temp_weight_cp  = tbdata[fits_reader["WEIGHT_CP"]]
         temp_weight_sdc = tbdata[fits_reader["WEIGHT_SDC"]]
-        temp_weight = (temp_weight_sdc*temp_weight_fkp*
-                       (temp_weight_noz + temp_weight_cp -1))
+        temp_weight = temp_weight_sdc * temp_weight_fkp * (temp_weight_noz + temp_weight_cp -1)
     except:
         temp_weight = tbdata[fits_reader["WEIGHT"]]
     catalog = numpy.array([temp_dec, temp_ra, temp_z, temp_weight]).T
