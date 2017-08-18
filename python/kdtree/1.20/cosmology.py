@@ -25,7 +25,6 @@ class Cosmology():
         self.model = 0
         self.__comoving_table = 0
         self.set_model()
-        self.__set_comoving_table()
 
     def __set_comoving_table(self):
         """ Return the redshift-comoving distance table from z_min to z_max.
@@ -113,7 +112,6 @@ class Cosmology():
                                          Neff=Neff,
                                          m_nu=numpy.asarray(m_nu)*units.eV)
         # Initialize array of redshift and comoving distance
-        self.__comoving_table = 0
         self.__set_comoving_table()
 
     def z2r(self, z):

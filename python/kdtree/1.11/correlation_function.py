@@ -10,16 +10,36 @@ from sklearn.neighbors import KDTree, BallTree
 DEG2RAD = numpy.pi/180.
 RAD2DEG = 180./numpy.pi
 
-# TODO: this should be change to adapt fits format. The function now ask for
-# a .txt file with 4 columns (RA, DEC, R, WEIGHT)
-def import_data(fname):
-    """ Import data into 2-d numpy array
-        Format: declination, right ascension, comoving distance, weight
-        """
-    catalog = numpy.genfromtxt(fname)
-    col_temp = numpy.copy(catalog[:, 0])
-    catalog[:, 0] = DEG2RAD*catalog[:, 1]
-    catalog[:, 1] = DEG2RAD*col_temp
+
+def import_fits(fname_key, fits_reader):
+    """ Import data into 2-d array
+    Inputs:
+    + fname_key: string
+        Key for data filename in reader.
+    + fits_readers: dict
+        Must have attributes: "INDEX"=index of headers. RA", "DEC", "Z",
+        "WEIGHT"=corresponded variable names in header.
+    Outputs:
+    + catalog: ndarray or tuple of ndarrays
+        Return catalog format in each row [DEC, RA, Z, WEIGHT].
+    """
+    header_index = int(fits_reader["INDEX"])
+    hdulist = fits.open(fits_reader[fname_key])
+    tbdata = hdulist[header_index].data
+    temp_dec = DEG2RAD*tbdata[fits_reader["DEC"]]
+    temp_ra = DEG2RAD*tbdata[fits_reader["RA"]]
+    temp_z = tbdata[fits_reader["Z"]]
+    try:
+        temp_weight_fkp = tbdata[fits_reader["WEIGHT_FKP"]]
+        temp_weight_noz = tbdata[fits_reader["WEIGHT_NOZ"]]
+        temp_weight_cp  = tbdata[fits_reader["WEIGHT_CP"]]
+        temp_weight_sdc = tbdata[fits_reader["WEIGHT_SDC"]]
+        temp_weight = (temp_weight_sdc*temp_weight_fkp*
+                       (temp_weight_noz + temp_weight_cp -1))
+    except:
+        temp_weight = tbdata[fits_reader["WEIGHT"]]
+    catalog = numpy.array([temp_dec, temp_ra, temp_z, temp_weight]).T
+    hdulist.close()
     return catalog
 
 
