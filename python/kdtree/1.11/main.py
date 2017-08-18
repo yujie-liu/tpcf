@@ -9,11 +9,6 @@ from correlation_function import CorrelationFunction
 matplotlib.rc('font', size=15)
 
 
-def get_error(hist_w, hist_u):
-    error_hist_u = numpy.sqrt(hist_u)
-    error_hist_w = hist_w/numpy.sqrt(hist_u)
-    return error_hist_w, error_hist_u
-
 def main():
     """ Run and plot two-point correlation function using
     class correlation_function.CorrelationFunction """
@@ -48,7 +43,7 @@ def main():
     # Save RR(s), DR(s), DD(s) and tpcf into .npz format
     numpy.savez("out/tpcf_sample",
                 RR=rand_rand, DR=data_rand, DD=data_data,
-                TPCF=correlation[0], TPCFSS=correlation[1],
+                TPCF=correlation[:, 0], TPCFSS=correlation[:, 1],
                 BINS=bins_s)
 
     # Create plot figure for RR(s), DR(s), DD(s) and tpcf

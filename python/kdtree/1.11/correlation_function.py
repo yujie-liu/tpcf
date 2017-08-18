@@ -29,7 +29,7 @@ def import_fits(fname_key, fits_reader):
     tbdata = hdulist[header_index].data
     temp_dec = DEG2RAD*tbdata[fits_reader["DEC"]]
     temp_ra = DEG2RAD*tbdata[fits_reader["RA"]]
-    temp_z = tbdata[fits_reader["Z"]]
+    temp_r = tbdata[fits_reader["R"]]
     try:
         temp_weight_fkp = tbdata[fits_reader["WEIGHT_FKP"]]
         temp_weight_noz = tbdata[fits_reader["WEIGHT_NOZ"]]
@@ -38,8 +38,7 @@ def import_fits(fname_key, fits_reader):
         temp_weight = (temp_weight_sdc*temp_weight_fkp*(temp_weight_noz + temp_weight_cp -1))
     except:
         temp_weight = tbdata[fits_reader["WEIGHT"]]
-    catalog = numpy.array([temp_dec, temp_ra, temp_z, temp_weight]).T
-    print(catalog)
+    catalog = numpy.array([temp_dec, temp_ra, temp_r, temp_weight]).T
     hdulist.close()
     return catalog
 
