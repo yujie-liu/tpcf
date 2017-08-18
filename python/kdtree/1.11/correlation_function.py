@@ -90,8 +90,8 @@ class CorrelationFunction():
         config.read(config_fname)
 
         # Import random and data catalogs
-        self.data_cat = import_data(config['FILE'].get('data_filename'))
-        self.rand_cat = import_data(config['FILE'].get('random_filename'))
+        self.data_cat = import_fits(config['FILE'].get('data_filename'))
+        self.rand_cat = import_fits(config['FILE'].get('random_filename'))
 
         # Setting up binning variables
         binnings = config['BINNING']
