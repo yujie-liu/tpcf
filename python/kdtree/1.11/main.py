@@ -9,6 +9,11 @@ from correlation_function import CorrelationFunction
 matplotlib.rc('font', size=15)
 
 
+def get_error(hist_w, hist_u):
+    error_hist_u = numpy.sqrt(hist_u)
+    error_hist_w = hist_w/numpy.sqrt(hist_u)
+    return error_hist_w, error_hist_u
+
 def main():
     """ Run and plot two-point correlation function using
     class correlation_function.CorrelationFunction """

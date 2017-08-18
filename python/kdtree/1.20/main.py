@@ -52,7 +52,7 @@ def main():
     # Save RR(s), DR(s), DD(s) and tpcf into .npz format
     numpy.savez("out/tpcf_sample",
                 RR=rand_rand, DR=data_rand, DD=data_data,
-                TPCF=correlation[0], TPCFSS=correlation[1],
+                TPCF=correlation[:, 0], TPCFSS=correlation[:, 1],
                 BINS=bins_s)
 
     # Create plot figure for RR(s), DR(s), DD(s) and tpcf

@@ -6,6 +6,7 @@ __version__ = 1.11
 import configparser
 import numpy
 from sklearn.neighbors import KDTree, BallTree
+from astropy.io import fits
 
 DEG2RAD = numpy.pi/180.
 RAD2DEG = 180./numpy.pi
@@ -38,6 +39,7 @@ def import_fits(fname_key, fits_reader):
     except:
         temp_weight = tbdata[fits_reader["WEIGHT"]]
     catalog = numpy.array([temp_dec, temp_ra, temp_z, temp_weight]).T
+    print(catalog)
     hdulist.close()
     return catalog
 
@@ -90,17 +92,18 @@ class CorrelationFunction():
         config.read(config_fname)
 
         # Import random and data catalogs
-        self.data_cat = import_fits(config['FILE'].get('data_filename'))
-        self.rand_cat = import_fits(config['FILE'].get('random_filename'))
+        reader = config['FITS']
+        self.data_cat = import_fits('data_filename', reader)
+        self.rand_cat = import_fits('random_filename', reader)
 
         # Setting up binning variables
         binnings = config['BINNING']
-        binwidth_ra = DEG2RAD*float(binnings.get('binwidth_ra'))
-        binwidth_dec = DEG2RAD*float(binnings.get('binwidth_dec'))
+        binwidth_ra = DEG2RAD*float(binnings['binwidth_ra'])
+        binwidth_dec = DEG2RAD*float(binnings['binwidth_dec'])
         # binwidth of angular distance distribution
-        binwidth_theta = DEG2RAD*float(binnings.get('binwidth_theta'))
-        binwidth_r = float(binnings.get('binwidth_r'))
-        binwidth_s = float(binnings.get('binwidth_s'))
+        binwidth_theta = DEG2RAD*float(binnings['binwidth_theta'])
+        binwidth_r = float(binnings['binwidth_r'])
+        binwidth_s = float(binnings['binwidth_s'])
 
         ra_min = min(self.rand_cat[:, 1].min(), self.data_cat[:, 1].min())
         ra_max = max(self.rand_cat[:, 1].max(), self.data_cat[:, 1].max())
@@ -108,7 +111,7 @@ class CorrelationFunction():
         dec_max = max(self.rand_cat[:, 0].max(), self.data_cat[:, 0].max())
         r_min = min(self.rand_cat[:, 2].min(), self.data_cat[:, 2].min())
         r_max = max(self.rand_cat[:, 2].max(), self.data_cat[:, 2].max())
-        s_max = float(binnings.get('s_max'))
+        s_max = float(binnings['s_max'])
         # maximum angular distance to be considered between any given points
         theta_max = numpy.arccos(1.-0.5*s_max**2/r_min**2)
 

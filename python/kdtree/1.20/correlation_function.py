@@ -333,12 +333,35 @@ class CorrelationFunction():
 
         return theta_z_hist[0], theta_z_hist[1], bins_theta, bins_z
 
+    def __get_error(self, hist):
+        """ Return the uncertainty in unnormalized DD(s), DR(s), and RR(s). The
+        unweighted uncertainty is assumed to be Poisson. The weighted uncertainty
+        is calculated as sigma_w = hist_w/sigma_u where hist_w is the value of
+        the histogram. If sigma_uw is zero, then sigma_w is also zero.
+        Inputs:
+        + hist: ndarray or tuples of ndarray
+            Values of weighted and unweighted DD(s), DR(s), or RR(s).
+            weight=hist[0], unweight=hist[1]
+        Outputs:
+        + error_hist: ndarray or tuples of ndarray
+            Errors of weighted and unweighted hist. weight=error_hist[0],
+            unweight=error_hist[1]
+            """
+        error_hist_u = numpy.sqrt(hist[1])
+        error_hist_w = numpy.divide(hist[0], error_hist_u,
+                                    out=numpy.zeros_like(hist[0]),
+                                    where=error_hist_u!=0)
+        error_hist = numpy.array([error_hist_w, error_hist_u])
+        return error_hist
+
     def get_redshift_hist(self, cosmology=None):
         """ Return a copy of weighted and unweighted redshift distribution P(z).
         If cosmology is given, return weighted and unweighted comoving distance
         distribution P(r) instead. Note that P(r) has uneven binnings.
         Inputs:
-        + cosmology: optional (default=None)
+        + cosmology: cosmology.Cosmology, optional (default=None)
+            Cosmology parameters to convert redshift z to comoving distance r.
+            See cosmology.Cosmology for more detail.
         Outputs:
         + hist_w: array
             Values of weighted histogram.
@@ -369,10 +392,14 @@ class CorrelationFunction():
     def rand_rand(self, cosmology):
         """ Construct separation distribution RR(s) between pairs of randoms.
         Inputs:
-        + cosmology: TODO: add comment
+        + cosmology: cosmology.Cosmology
+            Cosmology parameters to convert redshift z to comoving distance r.
+            See cosmology.Cosmology for more detail.
         Outputs:
         + rand_rand: ndarrays or tupple of ndarrays
             Return values of weighted and unweighted RR(s) respectively.
+        + error_rand_rand: ndarrays or tupple of ndarrays
+            Return error of weighted and unweighterd RR(s) respectively.
         + bins: array
             Binedges of RR(s) (length(rand_rand_hist)+1).
         """
@@ -420,18 +447,25 @@ class CorrelationFunction():
                                            weights=temp_weight)
             rand_rand[1] += temp_hist
 
-        return rand_rand, self.__bins_s
+        # get error
+        error_rand_rand = self.__get_error(rand_rand)
+
+        return rand_rand, error_rand_rand, self.__bins_s
 
     def data_rand(self, cosmology):
         """ Construct separation distribution DR(s) between pairs of a random
         point and a galaxy.
         Inputs:
-        + cosmology: TODO: add comment
+        + cosmology: cosmology.Cosmology
+            Cosmology parameters to convert redshift z to comoving distance r.
+            See cosmology.Cosmology for more detail.
         Outputs:
-        + racd_rand: ndarrays or tupple of ndarrays
-            Return values of weighted and unweighted RR(s) respectively.
+        + data_rand: ndarrays or tupple of ndarrays
+            Return values of weighted and unweighted DR(s) respectively.
+        + error_data_rand: ndarrays or tupple of ndarrays
+            Return error of weighted and unweighterd DR(s) respectively.
         + bins: array
-            Binedges of RR(s) (length(rand_rand_hist)+1).
+            Binedges of DR(s) (length(rand_rand_hist)+1).
         """
         # Convert redshift to comoving distance
         # convert P(z) to P(r), g(theta, z) tp g(theta, r) using input
@@ -473,7 +507,10 @@ class CorrelationFunction():
                                            weights=temp_weight)
             data_rand[1] += temp_hist
 
-        return data_rand, self.__bins_s
+        # get error
+        error_data_rand = self.__get_error(data_rand)
+
+        return data_rand, error_data_rand, self.__bins_s
 
     def data_data(self, cosmology, leaf=40):
         """ Calculate separation distribution DD(s) between pairs of galaxies.
@@ -481,7 +518,9 @@ class CorrelationFunction():
         up to a given radius defined in config file. Metric: Euclidean (or
         Minkowski with p=2).
         Inputs:
-        + cosmology: TODO: add comment
+        + cosmology: cosmology.Cosmology
+            Cosmology parameters to convert redshift z to comoving distance r.
+            See cosmology.Cosmology for more detail.
         + leaf: int (default=40)
             Number of points at which to switch to brute-force. For a specified
             leaf_size, a leaf node is guaranteed to satisfy
@@ -489,7 +528,9 @@ class CorrelationFunction():
             n_samples < leaf_size. More details in sklearn.neighbors.KDTree.
         Outputs:
         + data_data: ndarrays or tupple of ndarrays
-            Return vsalues of weighted and unweighted DD(s) respectively.
+            Return values of weighted and unweighted DD(s) respectively.
+        + error_data_data: ndarrays or tupple of ndarrays
+            Return errors of weighted and unweighted DD(s) respectively.
         + bins: array
             Binedges of DD(s) (length(data_data_hist)+1).
         """
@@ -542,7 +583,10 @@ class CorrelationFunction():
         data_data[1][0] -= self.data_cat.shape[0]
         data_data = data_data/2.
 
-        return data_data, self.__bins_s
+        # get error
+        error_data_data = self.__get_error(data_data)
+
+        return data_data, error_data_data, self.__bins_s
 
     def correlation(self, rand_rand, data_rand, data_data, bins):
         """ Construct two-point correlation function.
