@@ -36,7 +36,8 @@ def import_fits(fname_key, fits_reader):
         temp_weight_noz = tbdata[fits_reader["WEIGHT_NOZ"]]
         temp_weight_cp  = tbdata[fits_reader["WEIGHT_CP"]]
         temp_weight_sdc = tbdata[fits_reader["WEIGHT_SDC"]]
-        temp_weight = temp_weight_sdc * temp_weight_fkp * (temp_weight_noz + temp_weight_cp -1)
+        temp_weight = (temp_weight_sdc*temp_weight_fkp *
+                       (temp_weight_noz + temp_weight_cp -1))
     except:
         temp_weight = tbdata[fits_reader["WEIGHT"]]
     catalog = numpy.array([temp_dec, temp_ra, temp_z, temp_weight]).T
@@ -90,7 +91,7 @@ def get_binnings(x_min, x_max, binwidth):
 class CorrelationFunction():
     """ Class to Calculate two-point correlation function """
     def __init__(self, fname):
-        """ Constructor takes in configuration file and sets up binning
+        """ Calculate takes in configuration file and sets up binning
         variables and required distributions """
         config = configparser.ConfigParser()
         config.read(fname)
@@ -390,7 +391,7 @@ class CorrelationFunction():
         return theta_hist, bins_theta
 
     def rand_rand(self, cosmology):
-        """ Construct separation distribution RR(s) between pairs of randoms.
+        """ Calculate separation distribution RR(s) between pairs of randoms.
         Inputs:
         + cosmology: cosmology.Cosmology
             Cosmology parameters to convert redshift z to comoving distance r.
@@ -427,7 +428,7 @@ class CorrelationFunction():
         rand_rand = numpy.zeros((2, nbins_s))
 
         # Integration
-        print("Construct RR(s)")
+        print("Calculate RR(s)")
         for i, temp_r in enumerate(center_r):
             if i % 100 is 0:
                 print(i)
@@ -453,7 +454,7 @@ class CorrelationFunction():
         return rand_rand, error_rand_rand, self.__bins_s
 
     def data_rand(self, cosmology):
-        """ Construct separation distribution DR(s) between pairs of a random
+        """ Calculate separation distribution DR(s) between pairs of a random
         point and a galaxy.
         Inputs:
         + cosmology: cosmology.Cosmology
@@ -485,7 +486,7 @@ class CorrelationFunction():
         data_rand = numpy.zeros((2, nbins_s))
 
         # Integration
-        print("Construct DR(s)")
+        print("Calculate DR(s)")
         center_r = 0.5*(bins_r[:-1]+bins_r[1:])
         center_r = center_r[self.__z_hist[1] != 0]  # exclude zero bins
 
@@ -560,7 +561,7 @@ class CorrelationFunction():
         s_max = self.__bins_s.max()
         data_data = numpy.zeros((2, nbins_s))
 
-        print("Start Calculateing DD(s)...")
+        print("Calculate DD(s):")
         for i, point in enumerate(cart_cat):
             if i % 10000 is 0:
                 print(i)
@@ -589,7 +590,7 @@ class CorrelationFunction():
         return data_data, error_data_data, self.__bins_s
 
     def correlation(self, rand_rand, data_rand, data_data, bins):
-        """ Construct two-point correlation function.
+        """ Calculate two-point correlation function.
         Inputs:
         + rand_rand: array
             Values of separation distribution between pairs of random galaxies

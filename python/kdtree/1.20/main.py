@@ -30,29 +30,32 @@ def main():
                         tpcf.normalization(weighted=False)])
 
     # Construct separation distribution RR(s) between pairs of randoms
-    rand_rand, bins_s = tpcf.rand_rand(cosmo)
+    rand_rand, err_rand_rand, bins_s = tpcf.rand_rand(cosmo)
     rand_rand[0] /= norm[0][0]  # normalize weighted RR(s)
     rand_rand[1] /= norm[1][0]  # normalize unweighted RR(s)
 
     # Construct separation distribution DR(s) between pairs of a random point
     # and a galaxies
-    data_rand, _ = tpcf.data_rand(cosmo)
+    data_rand, err_data_rand, _ = tpcf.data_rand(cosmo)
     data_rand[0] /= norm[0][1]  # normalize weighted DR(s)
     data_rand[1] /= norm[1][1]  # normalize unweighted DR(s)
 
     # Construct separation distribution DD(s) between pairs of galaxies
-    data_data, _ = tpcf.data_data(cosmo)
+    data_data, err_data_data, _ = tpcf.data_data(cosmo)
     data_data[0] /= norm[0][2]  # normalize weighted DD(s)
     data_data[1] /= norm[1][2]  # normalize unweighted DD(s)
 
     # Construct two-point correlation function, both weighted and unweighted
-    correlation = [tpcf.correlation(rand_rand[i], data_rand[i], data_data[i],
-                                    bins_s) for i in range(2)]
+    correlation = numpy.zeros((2, 2, bins_s.size-1))
+    correlation[0] = tpcf.correlation(rand_rand[0], data_rand[0], data_data[0],
+                                      bins_s)
+    correlation[1] = tpcf.correlation(rand_rand[1], data_rand[1], data_data[1],
+                                      bins_s)
 
     # Save RR(s), DR(s), DD(s) and tpcf into .npz format
     numpy.savez("out/tpcf_sample",
                 RR=rand_rand, DR=data_rand, DD=data_data,
-                TPCF=correlation[:, 0], TPCFSS=correlation[:, 1],
+                TPCF=correlation[0], TPCFSS=correlation[1],
                 BINS=bins_s)
 
     # Create plot figure for RR(s), DR(s), DD(s) and tpcf
@@ -85,7 +88,7 @@ def main():
 
     figure.tight_layout()
     # Save figure
-    matplotlib.pyplot.savefig("sample.png", bbox_inches='tight')
+    matplotlib.pyplot.savefig("plot/sample.png", bbox_inches='tight')
 
 
 if __name__ == "__main__":

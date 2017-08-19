@@ -8,8 +8,8 @@ two changes:
 1) Define H0 = 100h km/s/Mpc; astropy default uses the measured value of H0.
 2) Allow for the possibile definition of nonzero curvature (not by default).
 """
-
-import os.path
+import os
+import errno
 import numpy
 from astropy import cosmology, units
 from scipy import interpolate
@@ -22,6 +22,11 @@ class Cosmology():
         is used. For now the cosmological parameters measured by Planck
         (P.A.R. Ade et al., Paper XIII, A&A 594:A13, 2016) are used.
         """
+        try:
+            os.makedirs("model_cache")
+        except OSError as exception:
+            if exception.errno != errno.EEXIST:
+                raise
         self.model = 0
         self.__comoving_table = 0
         self.set_model()

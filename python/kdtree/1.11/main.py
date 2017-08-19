@@ -21,15 +21,15 @@ def main():
                         tpcf.normalization(weighted=False)])
 
     # Construct separation distribution RR(s) between pairs of randoms
-    rand_rand, bins_s = tpcf.rand_rand()
-    rand_rand[0] /= norm[0][0]  # normalize weighted RR(s)
-    rand_rand[1] /= norm[1][0]  # normalize unweighted RR(s)
+    # rand_rand, bins_s = tpcf.rand_rand()
+    # rand_rand[0] /= norm[0][0]  # normalize weighted RR(s)
+    # rand_rand[1] /= norm[1][0]  # normalize unweighted RR(s)
 
     # Construct separation distribution DR(s) between pairs of a random point
     # and a galaxies
-    data_rand, _ = tpcf.data_rand()
-    data_rand[0] /= norm[0][1]  # normalize weighted DR(s)
-    data_rand[1] /= norm[1][1]  # normalize unweighted DR(s)
+    # data_rand, _ = tpcf.data_rand()
+    # data_rand[0] /= norm[0][1]  # normalize weighted DR(s)
+    # data_rand[1] /= norm[1][1]  # normalize unweighted DR(s)
 
     # Construct separation distribution DD(s) between pairs of galaxies
     data_data, _ = tpcf.data_data()
