@@ -113,17 +113,19 @@ class CorrelationFunction():
 
         # Calculate weighted and unweighted redshift distribution P(r) as two
         # one-dimensional histograms respectively.
-        self.__z_hist = self.__redshift_hist(binwidth_z)
+        temp_hist =  self.__redshift_hist(binwidth_z)
+        self.__z_hist = numpy.asarray(temp_hist)
 
         # Calculate angular distance distribution f(theta) and angular-redshift
         # distribution g(theta, z).
         # compute 2-d angular distribution R(ra, dec) and breaks them
         # into data points with proper weight.
         angular = hist2point(*self.__angular_hist(binwidth_dec, binwidth_ra))
-        self.__theta_hist = self.__angular_distance(angular, binwidth_theta,
-                                                    theta_max)
-        self.__theta_z_hist = self.__angular_distance_z(angular, binwidth_theta,
-                                                        binwidth_z, theta_max)
+        temp_hist = self.__angular_distance(angular, binwidth_theta, theta_max)
+        self.__theta_hist = numpy.asarray(temp_hist)
+        temp_hist = self.__angular_distance_z(angular, binwidth_theta,
+                                              binwidth_z, theta_max)
+        self.__theta_z_hist = numpy.asarray(temp_hist)
 
     def __redshift_hist(self, binwidth):
         """ Calculate weighted and unweighted redshift distribution P(z) as
@@ -364,31 +366,30 @@ class CorrelationFunction():
             Cosmology parameters to convert redshift z to comoving distance r.
             See cosmology.Cosmology for more detail.
         Outputs:
-        + hist_w: array
-            Values of weighted histogram.
-        + hist_u: array
-            Values of unweighted histogram.
-        + binedges: array
-            Return binedges of histogram (length(hist)+1).
+        + z_hist: ndarray or tupples of ndarray
+            Weighted and unweighted redshift distribution and binedges.
         """
-        hist_w = numpy.copy(self.__z_hist[0])
-        hist_u = numpy.copy(self.__z_hist[1])
-        binedges = numpy.copy(self.__z_hist[2])
+        z_hist = numpy.copy(self.__z_hist)
         if cosmology is not None:
-            binedges = cosmology.z2r(binedges)
-        return hist_w, hist_u, binedges
+            z_hist[2] = cosmology.z2r(z_hist[2])
+        return z_hist
 
-    def get_angular_distance(self):
+    def get_angular_distance_hist(self):
         """ Return a copy of angular distance distribution f(theta)
         Outputs:
-        + theta_hist: array
-            Values of angular distance histogram f(theta)
-        + bins_theta: array
-            Return binedges of histogram (length(theta_hist)+1)
+        + theta_hist: ndarray or tupples of ndarray
+            Angular distance distribution and binedges.
         """
-        theta_hist = numpy.copy(self.__theta_hist[0])
-        bins_theta = numpy.copy(self.__theta_hist[1])
-        return theta_hist, bins_theta
+        return numpy.copy(self.__theta_hist)
+
+    def get_angular_redshift_hist(self):
+        """ Return a copy of angular-redshift distribution g(theta, z)
+        Outputs:
+        + theta_z_hist: ndarray or tupples of ndarray
+            Weighted and unweighted angular-redshift distribution and binedges
+            of x-axis (angular distance) and y-axis (redshift) respectively.
+        """
+        return numpy.copy(self.__theta_z_hist)
 
     def rand_rand(self, cosmology):
         """ Calculate separation distribution RR(s) between pairs of randoms.

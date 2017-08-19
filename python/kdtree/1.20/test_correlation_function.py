@@ -4,6 +4,7 @@
 import unittest2
 import numpy
 import correlation_function
+import cosmology
 
 PI = 3.14159265359
 
@@ -124,6 +125,44 @@ class TestCorrelationFunction(unittest2.TestCase):
                                   [-4.1, 5.0, 3.1]])
         numpy.testing.assert_almost_equal(funct(hist, x_edges, y_edges),
                                           true_array)
+
+    def test_correlation_class(self):
+        """ Test class correlation function """
+        # import unittest data
+        test = numpy.load("unittest/tpcf_test.npz")
+
+        cosmo = cosmology.Cosmology()
+
+        tpcf = correlation_function.CorrelationFunction("unittest/config_test.cfg")
+        norm = numpy.array([tpcf.normalization(weighted=True),
+                            tpcf.normalization(weighted=False)])
+        rand_rand, err_rand_rand, bins_rand_rand = tpcf.rand_rand(cosmo)
+        data_rand, err_data_rand, bins_data_rand = tpcf.data_rand(cosmo)
+        data_data, err_data_data, bins_data_data = tpcf.data_data(cosmo)
+        correlation = tpcf.correlation(rand_rand[0], data_rand[0], data_data[0],
+                                       bins_rand_rand)
+
+        print(" - Normalization")
+        numpy.testing.assert_almost_equal(norm, test["NORM"])
+
+        print(" - Random-Random RR(s)")
+        numpy.testing.assert_almost_equal(rand_rand, test["RR"])
+        numpy.testing.assert_almost_equal(err_rand_rand, test["E_RR"])
+        numpy.testing.assert_almost_equal(bins_rand_rand, test["BINS"])
+
+        print(" - Data-Random DR(s)")
+        numpy.testing.assert_almost_equal(data_rand, test["DR"])
+        numpy.testing.assert_almost_equal(err_data_rand, test["E_DR"])
+        numpy.testing.assert_almost_equal(bins_data_rand, test["BINS"])
+
+        print(" - Data-Data DD(s)")
+        numpy.testing.assert_almost_equal(data_data, test["DD"])
+        numpy.testing.assert_almost_equal(err_data_data, test["E_DD"])
+        numpy.testing.assert_almost_equal(bins_data_data, test["BINS"])
+
+        print(" - Correlation")
+        numpy.testing.assert_almost_equal(correlation, test["TPCF_W"])
+
 
 def main():
     unittest2.main()
