@@ -21,29 +21,32 @@ def main():
                         tpcf.normalization(weighted=False)])
 
     # Construct separation distribution RR(s) between pairs of randoms
-    # rand_rand, bins_s = tpcf.rand_rand()
-    # rand_rand[0] /= norm[0][0]  # normalize weighted RR(s)
-    # rand_rand[1] /= norm[1][0]  # normalize unweighted RR(s)
+    rand_rand, err_rand_rand, bins_s = tpcf.rand_rand()
+    rand_rand[0] /= norm[0][0]  # normalize weighted RR(s)
+    rand_rand[1] /= norm[1][0]  # normalize unweighted RR(s)
 
     # Construct separation distribution DR(s) between pairs of a random point
     # and a galaxies
-    # data_rand, _ = tpcf.data_rand()
-    # data_rand[0] /= norm[0][1]  # normalize weighted DR(s)
-    # data_rand[1] /= norm[1][1]  # normalize unweighted DR(s)
+    data_rand, err_data_rand, _ = tpcf.data_rand()
+    data_rand[0] /= norm[0][1]  # normalize weighted DR(s)
+    data_rand[1] /= norm[1][1]  # normalize unweighted DR(s)
 
     # Construct separation distribution DD(s) between pairs of galaxies
-    data_data, _ = tpcf.data_data()
+    data_data, err_data_data, _ = tpcf.data_data()
     data_data[0] /= norm[0][2]  # normalize weighted DD(s)
     data_data[1] /= norm[1][2]  # normalize unweighted DD(s)
 
     # Construct two-point correlation function, both weighted and unweighted
-    correlation = [tpcf.correlation(rand_rand[i], data_rand[i], data_data[i],
-                                    bins_s) for i in range(2)]
+    correlation = numpy.zeros((2, 2, bins_s.size-1))
+    correlation[0] = tpcf.correlation(rand_rand[0], data_rand[0], data_data[0],
+                                      bins_s)
+    correlation[1] = tpcf.correlation(rand_rand[1], data_rand[1], data_data[1],
+                                      bins_s)
 
     # Save RR(s), DR(s), DD(s) and tpcf into .npz format
     numpy.savez("out/tpcf_sample",
                 RR=rand_rand, DR=data_rand, DD=data_data,
-                TPCF=correlation[:, 0], TPCFSS=correlation[:, 1],
+                TPCF=correlation[0], TPCFSS=correlation[1],
                 BINS=bins_s)
 
     # Create plot figure for RR(s), DR(s), DD(s) and tpcf
@@ -51,13 +54,13 @@ def main():
 
     bins_center = 0.5*(bins_s[:-1]+bins_s[1:])
     # Plot weighted RR(s), DR(s), DD(s)
-    axes[0, 0].plot(bins_center, data_data[0], label='DD(s)')
-    axes[0, 0].plot(bins_center, data_rand[0], label='DR(s)')
     axes[0, 0].plot(bins_center, rand_rand[0], label='RR(s)')
+    axes[0, 0].plot(bins_center, data_rand[0], label='DR(s)')
+    axes[0, 0].plot(bins_center, data_data[0], label='DD(s)')
     # Plot unweighted RR(s), DR(s), DD(s)
-    axes[0, 1].plot(bins_center, data_data[1], label='DD(s)')
+    axes[0, 1].plot(bins_center, rand_rand[1], label='RR(s)')
     axes[0, 1].plot(bins_center, data_rand[1], label='DR(s)')
-    axes[0, 1].plot(bins_center, rand_rand[1], label='DD(s)')
+    axes[0, 1].plot(bins_center, data_data[1], label='DD(s)')
     # Plot weighted and unweighted tpcf
     axes[1, 0].plot(bins_center, correlation[0][0], label='Weighted')
     axes[1, 0].plot(bins_center, correlation[1][0], label='Unweighted')
@@ -76,7 +79,8 @@ def main():
 
     figure.tight_layout()
     # Save figure
-    matplotlib.pyplot.savefig("sample.png", bbox_inches='tight')
+    matplotlib.pyplot.savefig("plot/sample.png", bbox_inches='tight')
+
 
 
 if __name__ == "__main__":

@@ -135,6 +135,27 @@ class CorrelationFunction():
         self.__bins_s = get_binnings(0., s_max, binwidth_s)
         self.__bins_theta = get_binnings(0., theta_max, binwidth_theta)
 
+    def __get_error(self, hist):
+        """ Return the uncertainty in unnormalized DD(s), DR(s), and RR(s). The
+        unweighted uncertainty is assumed to be Poisson. The weighted uncertainty
+        is calculated as sigma_w = hist_w/sigma_u where hist_w is the value of
+        the histogram. If sigma_uw is zero, then sigma_w is also zero.
+        Inputs:
+        + hist: ndarray or tuples of ndarray
+            Values of weighted and unweighted DD(s), DR(s), or RR(s).
+            weight=hist[0], unweight=hist[1]
+        Outputs:
+        + error_hist: ndarray or tuples of ndarray
+            Errors of weighted and unweighted hist. weight=error_hist[0],
+            unweight=error_hist[1]
+            """
+        error_hist_u = numpy.sqrt(hist[1])
+        error_hist_w = numpy.divide(hist[0], error_hist_u,
+                                    out=numpy.zeros_like(hist[0]),
+                                    where=error_hist_u!=0)
+        error_hist = numpy.array([error_hist_w, error_hist_u])
+        return error_hist
+
     def angular_distance(self, leaf=40):
         """ Construct f(theta), the angular distance distribution, as an
         one-dimensional histogram. Binnings are defined in config file.
@@ -344,7 +365,10 @@ class CorrelationFunction():
                                            weights=temp_weight)
             rand_rand[1] += temp_hist
 
-        return rand_rand, self.__bins_s
+        # get error
+        error_rand_rand = self.__get_error(rand_rand)
+
+        return rand_rand, error_rand_rand, self.__bins_s
 
     def data_rand(self, leaf=40):
         """ Construct separation distribution DR(s) between pairs of a random
@@ -404,7 +428,10 @@ class CorrelationFunction():
                                            weights=temp_weight)
             data_rand[1] += temp_hist
 
-        return data_rand, self.__bins_s
+        # get error
+        error_data_rand = self.__get_error(data_rand)
+
+        return data_rand,  error_data_rand, self.__bins_s
 
     def data_data(self, leaf=40):
         """ Construct separation distribution DD(s) between pairs of galaxies.
@@ -470,7 +497,10 @@ class CorrelationFunction():
         data_data[1][0] -= self.data_cat.shape[0]
         data_data = data_data/2.
 
-        return data_data, self.__bins_s
+        # get error
+        error_data_data = self.__get_error(data_data)
+
+        return data_data, error_data_data, self.__bins_s
 
     def correlation(self, rand_rand, data_rand, data_data, bins):
         """ Construct two-point correlation function.
