@@ -40,7 +40,7 @@ def import_fits(fname_key, fits_reader, cosmo):
         temp_weight_sdc = tbdata[fits_reader["WEIGHT_SDC"]]
         temp_weight = (temp_weight_sdc*temp_weight_fkp*
                        (temp_weight_noz + temp_weight_cp -1))
-    except:
+    except KeyError:
         temp_weight = tbdata[fits_reader["WEIGHT"]]
     catalog = numpy.array([temp_dec, temp_ra, temp_r, temp_weight]).T
     hdulist.close()
@@ -380,7 +380,7 @@ class CorrelationFunction():
             leaf_size <= n_points <= 2*leaf_size, except in the case that
             n_samples < leaf_size. More details in sklearn.neighbors.BallTree.
         Outputs:
-        + racd_rand: ndarrays or tupple of ndarrays
+        + rand_rand: ndarrays or tupple of ndarrays
             Return values of weighted and unweighted RR(s) respectively.
         + bins: array
             Binedges of RR(s) (length(rand_rand_hist)+1).
