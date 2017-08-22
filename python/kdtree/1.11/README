@@ -34,4 +34,12 @@
 #   - binwidth_s: Binwidth of two-point correlation function and separation histogram RR, DR, DD.
 #   Note: All angular variables have unit of degree. All distance variables have unit of Mpc/h.
 #          Will implement unit input.
+# Section: [COSMOLOGY]
+#   - hubble0: Hubble constant at present(z=0).
+#   - omega_m0: Relative density of matter at present (z=0).
+#   - omega_b0: Relative density of baryonic matter at present (z=0).
+#   - omega_de0: Relative density of dark energy at present (z=0).
+#   - temp_cmb: Temperature of the CMB (Cosmic Microwave Background) at present (z=0)
+#   - nu_eff: Effective number of neutrino flavor.
+#   - m_nu: Mass of each flavor of neutrino
 # Optional: Not yet implemented.
