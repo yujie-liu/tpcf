@@ -7,12 +7,13 @@ import configparser
 import numpy
 from sklearn.neighbors import KDTree, BallTree
 from astropy.io import fits
+from cosmology import Cosmology
 
 DEG2RAD = numpy.pi/180.
 RAD2DEG = 180./numpy.pi
 
 
-def import_fits(fname_key, fits_reader):
+def import_fits(fname_key, fits_reader, cosmo):
     """ Import data into 2-d array
     Inputs:
     + fname_key: string
@@ -20,16 +21,18 @@ def import_fits(fname_key, fits_reader):
     + fits_readers: dict
         Must have attributes: "INDEX"=index of headers. RA", "DEC", "Z",
         "WEIGHT"=corresponded variable names in header.
+    + cosmol: cosmology.Cosmology
+        Cosmological parameters to convert redshift to comoving distance.
     Outputs:
     + catalog: ndarray or tuple of ndarrays
-        Return catalog format in each row [DEC, RA, Z, WEIGHT].
+        Return catalog format in each row [DEC, RA, R, WEIGHT].
     """
     header_index = int(fits_reader["INDEX"])
     hdulist = fits.open(fits_reader[fname_key])
     tbdata = hdulist[header_index].data
     temp_dec = DEG2RAD*tbdata[fits_reader["DEC"]]
     temp_ra = DEG2RAD*tbdata[fits_reader["RA"]]
-    temp_r = tbdata[fits_reader["R"]]
+    temp_r = cosmo.z2r(tbdata[fits_reader["Z"]])
     try:
         temp_weight_fkp = tbdata[fits_reader["WEIGHT_FKP"]]
         temp_weight_noz = tbdata[fits_reader["WEIGHT_NOZ"]]
@@ -91,10 +94,21 @@ class CorrelationFunction():
         config = configparser.ConfigParser()
         config.read(config_fname)
 
+        # Create cosmology
+        cosmo_params = config["COSMOLOGY"]
+        cosmo = Cosmology()
+        cosmo.set_model(float(cosmo_params["hubble0"]),
+                        float(cosmo_params["omega_m0"]),
+                        float(cosmo_params["omega_b0"]),
+                        float(cosmo_params["omega_de0"]),
+                        float(cosmo_params["temp_cmb"]),
+                        float(cosmo_params["nu_eff"]),
+                        list(map(float, cosmo_params["m_nu"].split(","))))
+
         # Import random and data catalogs
         reader = config['FITS']
-        self.data_cat = import_fits('data_filename', reader)
-        self.rand_cat = import_fits('random_filename', reader)
+        self.data_cat = import_fits('data_filename', reader, cosmo)
+        self.rand_cat = import_fits('random_filename', reader, cosmo)
 
         # Setting up binning variables
         binnings = config['BINNING']
