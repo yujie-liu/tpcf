@@ -218,12 +218,12 @@ class CorrelationFunction():
             leaf_size <= n_points <= 2*leaf_size, except in the case that
             n_samples < leaf_size. More details in sklearn.neighbors.BallTree.
         Outputs:
-        + theta_z_hist: ndarray or tuple of ndarrays
-            Return values of weighted and unweighted g(theta, z) respectively.
-            Each has dimension (length(bins_theta)-1, length(bins_z)-1).
+        + r_theta_hist: ndarray or tuple of ndarrays
+            Return values of weighted and unweighted g(theta, r) respectively.
+            Each has dimension (length(bins_theta)-1, length(bins_r)-1).
         + bins_theta: array
             Binedges along x-axis.
-        + bins_z: array
+        + bins_r: array
             Binedges along y-axis.
         """
         # Compute 2d angular distribution R(ra, dec) and breaks them into data
@@ -311,7 +311,7 @@ class CorrelationFunction():
             leaf_size <= n_points <= 2*leaf_size, except in the case that
             n_samples < leaf_size. More details in sklearn.neighbors.BallTree.
         Outputs:
-        + racd_rand: ndarrays or tupple of ndarrays
+        + rand_rand: ndarrays or tupple of ndarrays
             Return values of weighted and unweighted RR(s) respectively.
         + bins: array
             Binedges of RR(s) (length(rand_rand_hist)+1).
@@ -380,10 +380,10 @@ class CorrelationFunction():
             leaf_size <= n_points <= 2*leaf_size, except in the case that
             n_samples < leaf_size. More details in sklearn.neighbors.BallTree.
         Outputs:
-        + rand_rand: ndarrays or tupple of ndarrays
-            Return values of weighted and unweighted RR(s) respectively.
+        + data_rand: ndarrays or tupple of ndarrays
+            Return values of weighted and unweighted DR(s) respectively.
         + bins: array
-            Binedges of RR(s) (length(rand_rand_hist)+1).
+            Binedges of DR(s) (length(data_rand_hist)+1).
         """
         # Construct weighted and unweighted radial distribution P(r) as two
         # one-dimensional histograms respectively.
