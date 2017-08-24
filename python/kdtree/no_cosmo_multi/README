@@ -1,6 +1,30 @@
 # Copyright: University of Rochester DESI group.
 # Authors: Tri Nguyen, Segev BenZvi, Regina Demina, Tolga Yapici
 
+# JOBS
+# We use divide.py to divide the program into multiple jobs.
+# Arguments:
+#   + Job number: Job number must be an integer from 0 to total_job-1.
+#   + Total jobs: Total number of jobs that will be submitted.
+#   + Configuration: Setting for correlation function. See below.
+#   + Prefix: Prefix of the output files (can include folder path, folder must
+#   exist).
+# Example:
+#   Call "python3 divide.py 2 10 config.cfg out/sample" to use config.cfg as setting and 
+#   compute component output for two-point correlation. The job number is 2 and the total
+#   number of jobs is 10. The output will be in directory "out" as "sample_002.npz"
+# We use combine.py to combine component outputs from divide.py to compute DD(s), DR(s), 
+# RR(s) and correlation function.
+# Arguments:
+#   + Configuration: Setting for correlation function. Must be the same with the one use
+#   for divide.py.
+#   + Prefix: Prefix of the output files from divide.py
+# Example:
+#   Call "python3 combine.py config.cfg out/sample to combine out/sample* and 
+#   calculate two-point correlations. The output will be in directory "out" as "sample_final.npz"
+
+
+# CONFIGURATION FILES
 # Configuration files should be divided into python configuration sections.
 # Example:
 # To create section "SAMPLE_SECTION" with parameter "sample_par" and value "sample_val"

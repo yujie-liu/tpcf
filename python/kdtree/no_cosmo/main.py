@@ -28,13 +28,13 @@ def main():
     # Construct separation distribution DR(s) between pairs of a random point
     # and a galaxies
     data_rand, err_data_rand, _ = tpcf.data_rand()
-    data_rand[0] /= norm[0][1]  # normalize weighted DR(s)
-    data_rand[1] /= norm[1][1]  # normalize unweighted DR(s)
+    # data_rand[0] /= norm[0][1]  # normalize weighted DR(s)
+    # data_rand[1] /= norm[1][1]  # normalize unweighted DR(s)
 
     # Construct separation distribution DD(s) between pairs of galaxies
     data_data, err_data_data, _ = tpcf.data_data()
-    data_data[0] /= norm[0][2]  # normalize weighted DD(s)
-    data_data[1] /= norm[1][2]  # normalize unweighted DD(s)
+    # data_data[0] /= norm[0][2]  # normalize weighted DD(s)
+    # data_data[1] /= norm[1][2]  # normalize unweighted DD(s)
 
     # Construct two-point correlation function, both weighted and unweighted
     correlation = numpy.zeros((2, 2, bins_s.size-1))

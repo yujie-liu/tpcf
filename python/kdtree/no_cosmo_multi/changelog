@@ -1,5 +1,7 @@
-Version 1.30: (unfinished)
-  - Add multiprocessing 
+Version 1.30:
+  - Add multiprocessing :
+  Add divide.py to divide parent job into several child jobs.
+  Add combine.py to combine child resul into parent result.
 
 Version 1.11:
   - Change function name histogram2points() to hist2point().
