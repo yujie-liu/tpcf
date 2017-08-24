@@ -9,10 +9,10 @@ def main():
     """ Main """
     # Cmd argument are configurationfile and output prefix
     config_fname = sys.argv[1]
-    prefix = sys.argv[2]
+    prefix = sys.argv[2]  # prefix can include directory name
 
     # Combining histogram by simply taking the sum in each bin
-    fname_list = glob.glob("out/{}*".format(prefix))
+    fname_list = glob.glob("{}*".format(prefix))
     for i, fname in enumerate(fname_list):
         print("Reading from {}".format(fname))
         temp_file = numpy.load(fname)
@@ -50,7 +50,7 @@ def main():
                                       bins_s)
 
     # Save results
-    numpy.savez("out/{}_final".format(prefix),
+    numpy.savez("{}_final".format(prefix),
                 DD=data_data, RR=rand_rand, DR=data_rand,
                 TPCF=correlation[:, 0], TPCFSS=correlation[:, 1],
                 BINS=bins_s)

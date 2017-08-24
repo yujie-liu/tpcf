@@ -30,7 +30,7 @@ def main():
     data_data, _ = tpcf.data_data(no_job, total_jobs)
 
     # Save with prefix
-    numpy.savez("out/{}_{:03d}".format(prefix, no_job),
+    numpy.savez("{}_{:03d}".format(prefix, no_job),
                 DD=data_data, ANGULAR_D=theta_hist, ANGULAR_R=r_theta_hist)
 
 

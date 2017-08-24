@@ -83,7 +83,7 @@ def get_distance(radius1, radius2, theta):
 def get_binnings(x_min, x_max, binwidth):
     """ Return the binnings given min, max and width """
     nbins = int(numpy.ceil((x_max-x_min)/binwidth))
-    return numpy.linspace(x_min, x_max, nbins)
+    return numpy.linspace(x_min, x_max, nbins+1)
 
 def get_job_index(no_job, total_jobs, job_size):
     """ Calculate start and end index based on job number, total number of jobs,
@@ -102,7 +102,7 @@ def get_job_index(no_job, total_jobs, job_size):
     """
     # Calculate start and end index based on job number and total number of
     # jobs.
-    job_index = numpy.floor(numpy.linspace(0, job_size-1, total_jobs+1))
+    job_index = numpy.floor(numpy.linspace(0, job_size, total_jobs+1))
     job_index = job_index.astype(int)
     job_range = (job_index[no_job], job_index[no_job+1])
     return job_range
@@ -180,7 +180,7 @@ class CorrelationFunction():
         theta_max = self.__bins_theta.max()
         theta_hist = numpy.zeros(nbins_theta)
 
-        print("Construct f(theta) from index {} to {}".format(start, end))
+        print("Construct f(theta) from index {} to {}".format(start, end-1))
         for i, point in enumerate(angular_points[start:end]):
             if i % 10000 is 0:
                 print(i)
@@ -230,7 +230,7 @@ class CorrelationFunction():
                       (self.__bins_r.min(), self.__bins_r.max()))
         r_theta_hist = numpy.zeros((2, nbins_theta, nbins_r))
 
-        print("Construct g(theta, r) from index {} to {}".format(start, end))
+        print("Construct g(theta, r) from index {} to {}".format(start, end-1))
         if mode == "data":
             for i, point in enumerate(self.data_cat[start:end]):
                 if i % 10000 is 0:
@@ -302,7 +302,7 @@ class CorrelationFunction():
         s_max = self.__bins_s.max()
         data_data = numpy.zeros((2, nbins_s))
 
-        print("Calculate DD(s) from index {} to {}".format(start, end))
+        print("Calculate DD(s) from index {} to {}".format(start, end-1))
         for i, point in enumerate(data_cat[start:end]):
             if i % 10000 is 0:
                 print(i)
@@ -310,7 +310,7 @@ class CorrelationFunction():
                                                  r=s_max,
                                                  return_distance=True)
             # Fill weighted histogram
-            temp_weight = data_cat[:, 3][index[0]]*data_cat[i, 3]
+            temp_weight = data_cat[:, 3][index[0]]*point[3]
             temp_hist, _ = numpy.histogram(dist[0], bins=nbins_s,
                                            range=(0., s_max),
                                            weights=temp_weight)

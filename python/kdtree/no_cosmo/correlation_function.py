@@ -83,7 +83,7 @@ def get_distance(radius1, radius2, theta):
 def get_binnings(x_min, x_max, binwidth):
     """ Return the binnings given min, max and width """
     nbins = int(numpy.ceil((x_max-x_min)/binwidth))
-    return numpy.linspace(x_min, x_max, nbins)
+    return numpy.linspace(x_min, x_max, nbins+1)
 
 
 class CorrelationFunction():
