@@ -110,9 +110,9 @@ def get_job_index(no_job, total_jobs, job_size):
 
 class CorrelationFunction():
     """ Class to construct two-point correlation function """
-    def __init__(self, config_fname):
+    def __init__(self, config_fname, analysis_mode=False):
         """ Constructor takes in configuration file and sets up binning
-        variables """
+        variables. If analysis_mode is True, will not import catalog."""
         config = configparser.ConfigParser()
         config.read(config_fname)
 
@@ -128,9 +128,12 @@ class CorrelationFunction():
                         list(map(float, cosmo_params["m_nu"].split(","))))
 
         # Import random and data catalogs
-        reader = config['FITS']
-        self.data_cat = import_fits('data_filename', reader, cosmo)
-        self.rand_cat = import_fits('random_filename', reader, cosmo)
+        self.data_cat = None
+        self.rand_cat = None
+        if not analysis_mode:
+            reader = config['FITS']
+            self.data_cat = import_fits('data_filename', reader, cosmo)
+            self.rand_cat = import_fits('random_filename', reader, cosmo)
 
         # Setting up binning variables
         binnings = config['BINNING']
@@ -327,6 +330,28 @@ class CorrelationFunction():
 
         return data_data
 
+    def comoving_distribution(self):
+        """ Calculate weighted and unweighted comoving distribution P(r) as
+        two one-dimensional histograms.
+        Outputs:
+        + hist: array
+            Values of weighted and unweighted P(r).
+        + binedges: array
+            Return binedges (length(hist)+1)
+        """
+        if self.data_cat is None or self.rand_cat is None:
+            raise TypeError("Catalog must be imported.")
+
+        # Calculate weighted and unweighted radial distribution P(r) as two
+        # one-dimensional histograms respectively.
+        r_hist = numpy.zeros((2, self.__bins_r.size-1))
+        r_hist[0] += numpy.histogram(self.rand_cat[:, 2], bins=self.__bins_r,
+                                     weights=self.rand_cat[:, 3])[0]
+        r_hist[1] += numpy.histogram(self.rand_cat[:, 2], bins=self.__bins_r)[0]
+        r_hist = 1.*r_hist/self.rand_cat.shape[0]
+
+        return r_hist, self.__bins_r
+
     def angular_distance(self, no_job, total_jobs, leaf=40):
         """ Calculate the angular distance distribution f(theta) as an
         one-dimensional histogram. Binnings are defined in config file.
@@ -349,6 +374,9 @@ class CorrelationFunction():
         + bins: array
             Binedges of histogram  (length(theta_hist)-1).
         """
+        if self.data_cat is None or self.rand_cat is None:
+            raise TypeError("Catalog must be imported.")
+
         # Compute 2d angular distribution R(ra, dec) and breaks them into data
         # points with proper weights.
         angular_hist = numpy.histogram2d(self.rand_cat[:, 0],
@@ -370,7 +398,7 @@ class CorrelationFunction():
         return theta_hist, self.__bins_theta
 
     def r_angular_distance(self, no_job, total_jobs, leaf=40):
-        """ Calculate g(theta, z), angular distance vs. redshift distribution,
+        """ Calculate g(theta, r), angular distance vs. comoving distribution,
         as a two-dimensional histogram. Binnings are defined in config file.
         Use a modified nearest-neighbors BallTree algorithm to calculate
         angular distance up to a given radius defined in config file.
@@ -394,6 +422,9 @@ class CorrelationFunction():
         + bins_r: array
             Binedges along y-axis.
         """
+        if self.data_cat is None or self.rand_cat is None:
+            raise TypeError("Catalog must be imported.")
+
         # Compute 2d angular distribution R(ra, dec) and breaks them into data
         # points with proper weights.
         angular_hist = numpy.histogram2d(self.rand_cat[:, 0],
@@ -421,29 +452,29 @@ class CorrelationFunction():
         job_range = get_job_index(no_job, total_jobs, job_size)
         r_theta_hist = self.__r_angular_distance_thread(angular_points,
                                                         arc_tree,
-                                                        *job_range, mode)
+                                                        job_range[0],
+                                                        job_range[1], mode)
 
         return r_theta_hist, self.__bins_theta, self.__bins_r
 
-    def rand_rand(self, theta_hist):
+    def rand_rand(self, theta_hist, r_hist):
         """ Calculate separation distribution RR(s) between pairs of randoms.
         Inputs:
         + theta_hist: array
             Values of angular distance distribution f(theta) for binedges
             self.__bins_theta.
+        + r_hist: ndarrays or tuples of ndarrays
+            Values of the weighted and unweighted of the comoving distance
+            distribution P(r) respective. Dimension must be
+            (2, length(self.__bins_r)-1).
         Outputs:
         + rand_rand: ndarrays or tuples of ndarrays
             Return values of weighted and unweighted RR(s) respectively.
         + bins: array
             Binedges of RR(s) (length(rand_rand_hist)+1).
         """
-        # Construct weighted and unweighted radial distribution P(r) as two
-        # one-dimensional histograms respectively.
-        r_hist = numpy.zeros((2, self.__bins_r.size-1))
-        r_hist[0] += numpy.histogram(self.rand_cat[:, 2], bins=self.__bins_r,
-                                     weights=self.rand_cat[:, 3])[0]
-        r_hist[1] += numpy.histogram(self.rand_cat[:, 2], bins=self.__bins_r)[0]
-        r_hist = 1.*r_hist/self.rand_cat.shape[0]
+        if self.data_cat is None or self.rand_cat is None:
+            raise TypeError("Catalog must be imported.")
 
         # Convert f(theta) and P(r) into data points, weighted and unweighted
         weight = numpy.zeros((2, theta_hist.size, r_hist.shape[1]))
@@ -485,26 +516,25 @@ class CorrelationFunction():
 
         return rand_rand, self.__bins_s
 
-    def data_rand(self, r_theta_hist):
+    def data_rand(self, r_theta_hist, r_hist):
         """ Calculate separation distribution DR(s) between pairs of a random
         point and a galaxy.
         Inputs:
-        + r_theta_hist: ndarrays of tuples of ndarrays
+        + r_theta_hist: ndarrays or tuples of ndarrays
             Values of weighted and unweighted g(theta, r) respectively.
             Dimension must be (2, length(self.__bins_theta)-1, length(self.__bins_r)-1).
+        + r_hist: ndarrays or tuples of ndarrays
+            Values of the weighted and unweighted of the comoving distance
+            distribution P(r) respective. Dimension must be
+            (2, length(self.__bins_r)-1).
         Outputs:
         + data_rand: ndarrays or tuples of ndarrays
             Return values of weighted and unweighted DR(s) respectively.
         + bins: array
             Binedges of DR(s) (length(data_rand_hist)+1).
         """
-        # Construct weighted and unweighted radial distribution P(r) as two
-        # one-dimensional histograms respectively.
-        r_hist = numpy.zeros((2, self.__bins_r.size-1))
-        r_hist[0] += numpy.histogram(self.rand_cat[:, 2], bins=self.__bins_r,
-                                     weights=self.rand_cat[:, 3])[0]
-        r_hist[1] += numpy.histogram(self.rand_cat[:, 2], bins=self.__bins_r)[0]
-        r_hist = 1.*r_hist/self.rand_cat.shape[0]
+        if self.data_cat is None or self.rand_cat is None:
+            raise TypeError("Catalog must be imported.")
 
         # Convert g(theta, r) into data points, weighted and unweighted
         temp_points = (
@@ -562,6 +592,9 @@ class CorrelationFunction():
         + bins: array
             Binedges of DD(s) (length(data_data_hist)+1).
         """
+        if self.data_cat is None or self.rand_cat is None:
+            raise TypeError("Catalog must be imported.")
+
         # Convert Celestial coordinate into Cartesian coordinate
         # Conversion equation is:
         # x = r*cos(dec)*cos(ra)
@@ -646,6 +679,9 @@ class CorrelationFunction():
         and sum_w2_data is the sum of weights squared in randoms and galaxies
         catalog respectively.
         """
+        if self.data_cat is None or self.rand_cat is None:
+            raise TypeError("Catalog must be imported.")
+
         if weighted:
             # Calculate weighted normalization constant
             w_sum_rand = numpy.sum(self.rand_cat[:, 3])

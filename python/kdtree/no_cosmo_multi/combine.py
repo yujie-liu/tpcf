@@ -1,5 +1,6 @@
 """ Script for combining job results and calculate DD(s), DR(s), and RR(s) """
 
+import os
 import sys
 import glob
 import numpy
@@ -7,9 +8,8 @@ from correlation_function import CorrelationFunction
 
 def main():
     """ Main """
-    # Cmd argument are configurationfile and output prefix
-    config_fname = sys.argv[1]
-    prefix = sys.argv[2]  # prefix can include directory name
+    # Cmd argument is output prefix
+    prefix = sys.argv[1]  # prefix can include directory name
 
     # Combining histogram by simply taking the sum in each bin
     fname_list = glob.glob("{}*".format(prefix))
@@ -20,6 +20,8 @@ def main():
             data_data = temp_file["DD"]
             theta_hist = temp_file["ANGULAR_D"]
             r_theta_hist = temp_file["ANGULAR_R"]
+            r_hist = temp_file["R_HIST"]
+            norm = temp_file["NORM"]
         else:
             data_data += temp_file["DD"]
             theta_hist += temp_file["ANGULAR_D"]
@@ -27,16 +29,14 @@ def main():
 
     # Create an instance of two-point correlation function that reads in
     # configuration file
-    # IMPORTANT: setting should be the same with job config file.
-    tpcf = CorrelationFunction(config_fname)
+    config_fname = "{}_config.cfg".format(prefix)
+    if not os.path.isfile(config_fname):
+        raise IOError("Configuration file not found.")
+    tpcf = CorrelationFunction(config_fname, analysis_mode=True)
 
-    # Calculate RR(s) and DR(s)
-    rand_rand, bins_s = tpcf.rand_rand(theta_hist)
-    data_rand, _ = tpcf.data_rand(r_theta_hist)
-
-    # Normalization
-    norm = numpy.array([tpcf.normalization(weighted=True),
-                        tpcf.normalization(weighted=False)])
+    # Calculate RR(s) and DR(s), DD(s)
+    rand_rand, bins_s = tpcf.rand_rand(theta_hist, r_hist)
+    data_rand, _ = tpcf.data_rand(r_theta_hist, r_hist)
     for i in range(2):
         rand_rand[i] = rand_rand[i]/norm[i][0]
         data_rand[i] = data_rand[i]/norm[i][1]
