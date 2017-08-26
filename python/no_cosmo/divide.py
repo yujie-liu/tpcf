@@ -7,7 +7,6 @@ from correlation_function import CorrelationFunction
 
 def main():
     """ Main """
-
     # Cmd arguments are job number, total number of jobs, configuration file,
     # and output prefix
     #   + Job number: Job number must be an integer from 0 to total_job-1.
@@ -45,7 +44,7 @@ def main():
                     DD=data_data, ANGULAR_D=theta_hist, ANGULAR_R=r_theta_hist,
                     R_HIST=r_hist, NORM=norm)
         # Save configuration files
-        subprocess.call("cp {} {}_config.cfg".format(config_fname, prefix))
+        subprocess.call("cp {} {}_config.cfg".format(config_fname, prefix).split())
     else:
         numpy.savez("{}_{:03d}".format(prefix, no_job),
                     DD=data_data, ANGULAR_D=theta_hist, ANGULAR_R=r_theta_hist)

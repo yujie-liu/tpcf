@@ -80,7 +80,7 @@ def get_distance(radius1, radius2, theta):
     return numpy.sqrt(radius1**2+radius2**2-2*radius1*radius2*numpy.cos(theta))
 
 
-def get_binnings(x_min, x_max, binwidth):
+def get_bins(x_min, x_max, binwidth):
     """ Return the binnings given min, max and width """
     nbins = int(numpy.ceil((x_max-x_min)/binwidth))
     return numpy.linspace(x_min, x_max, nbins+1)
@@ -112,7 +112,7 @@ class CorrelationFunction():
     """ Class to construct two-point correlation function """
     def __init__(self, config_fname, analysis_mode=False):
         """ Constructor takes in configuration file and sets up binning
-        variables. If analysis_mode is True, will not import catalog."""
+        variables."""
         config = configparser.ConfigParser()
         config.read(config_fname)
 
@@ -144,21 +144,21 @@ class CorrelationFunction():
         binwidth_r = float(binnings['binwidth_r'])
         binwidth_s = float(binnings['binwidth_s'])
 
-        ra_min = min(self.rand_cat[:, 1].min(), self.data_cat[:, 1].min())
-        ra_max = max(self.rand_cat[:, 1].max(), self.data_cat[:, 1].max())
         dec_min = min(self.rand_cat[:, 0].min(), self.data_cat[:, 0].min())
         dec_max = max(self.rand_cat[:, 0].max(), self.data_cat[:, 0].max())
+        ra_min = min(self.rand_cat[:, 1].min(), self.data_cat[:, 1].min())
+        ra_max = max(self.rand_cat[:, 1].max(), self.data_cat[:, 1].max())
         r_min = min(self.rand_cat[:, 2].min(), self.data_cat[:, 2].min())
         r_max = max(self.rand_cat[:, 2].max(), self.data_cat[:, 2].max())
         s_max = float(binnings['s_max'])
         # maximum angular distance to be considered between any given points
         theta_max = numpy.arccos(1.-0.5*s_max**2/r_min**2)
 
-        self.__bins_ra = get_binnings(ra_min, ra_max, binwidth_ra)
-        self.__bins_dec = get_binnings(dec_min, dec_max, binwidth_dec)
-        self.__bins_r = get_binnings(r_min, r_max, binwidth_r)
-        self.__bins_s = get_binnings(0., s_max, binwidth_s)
-        self.__bins_theta = get_binnings(0., theta_max, binwidth_theta)
+        self.__bins_ra = get_bins(ra_min, ra_max, binwidth_ra)
+        self.__bins_dec = get_bins(dec_min, dec_max, binwidth_dec)
+        self.__bins_r = get_bins(r_min, r_max, binwidth_r)
+        self.__bins_s = get_bins(0., s_max, binwidth_s)
+        self.__bins_theta = get_bins(0., theta_max, binwidth_theta)
 
     def __angular_distance_thread(self, angular_points, arc_tree, start, end):
         """ Thread function to calculate angular distance distribution f(theta)
@@ -298,7 +298,6 @@ class CorrelationFunction():
         + data_data: ndarrays or tuples of ndarrays
             Return values of weighted and unweighted DD(s) respectively.
         """
-
         # Define weighted and unweighted DD(s) as two one-dimensional
         # histograms respectively.
         nbins_s = self.__bins_s.size-1
@@ -340,7 +339,7 @@ class CorrelationFunction():
             Return binedges (length(hist)+1)
         """
         if self.data_cat is None or self.rand_cat is None:
-            raise TypeError("Catalog must be imported.")
+            raise TypeError("Catalogs are not imported.")
 
         # Calculate weighted and unweighted radial distribution P(r) as two
         # one-dimensional histograms respectively.
@@ -375,7 +374,7 @@ class CorrelationFunction():
             Binedges of histogram  (length(theta_hist)-1).
         """
         if self.data_cat is None or self.rand_cat is None:
-            raise TypeError("Catalog must be imported.")
+            raise TypeError("Catalogs are not imported.")
 
         # Compute 2d angular distribution R(ra, dec) and breaks them into data
         # points with proper weights.
@@ -423,7 +422,7 @@ class CorrelationFunction():
             Binedges along y-axis.
         """
         if self.data_cat is None or self.rand_cat is None:
-            raise TypeError("Catalog must be imported.")
+            raise TypeError("Catalogs are not imported.")
 
         # Compute 2d angular distribution R(ra, dec) and breaks them into data
         # points with proper weights.
@@ -461,21 +460,16 @@ class CorrelationFunction():
         """ Calculate separation distribution RR(s) between pairs of randoms.
         Inputs:
         + theta_hist: array
-            Values of angular distance distribution f(theta) for binedges
-            self.__bins_theta.
+            Values of angular distance distribution f(theta).
         + r_hist: ndarrays or tuples of ndarrays
             Values of the weighted and unweighted of the comoving distance
-            distribution P(r) respective. Dimension must be
-            (2, length(self.__bins_r)-1).
+            distribution P(r) respective.
         Outputs:
         + rand_rand: ndarrays or tuples of ndarrays
             Return values of weighted and unweighted RR(s) respectively.
         + bins: array
             Binedges of RR(s) (length(rand_rand_hist)+1).
         """
-        if self.data_cat is None or self.rand_cat is None:
-            raise TypeError("Catalog must be imported.")
-
         # Convert f(theta) and P(r) into data points, weighted and unweighted
         weight = numpy.zeros((2, theta_hist.size, r_hist.shape[1]))
         for i in range(theta_hist.size):
@@ -533,9 +527,6 @@ class CorrelationFunction():
         + bins: array
             Binedges of DR(s) (length(data_rand_hist)+1).
         """
-        if self.data_cat is None or self.rand_cat is None:
-            raise TypeError("Catalog must be imported.")
-
         # Convert g(theta, r) into data points, weighted and unweighted
         temp_points = (
             (hist2point(r_theta_hist[0], self.__bins_theta, self.__bins_r),
@@ -593,7 +584,7 @@ class CorrelationFunction():
             Binedges of DD(s) (length(data_data_hist)+1).
         """
         if self.data_cat is None or self.rand_cat is None:
-            raise TypeError("Catalog must be imported.")
+            raise TypeError("Catalogs are not imported.")
 
         # Convert Celestial coordinate into Cartesian coordinate
         # Conversion equation is:
@@ -680,7 +671,7 @@ class CorrelationFunction():
         catalog respectively.
         """
         if self.data_cat is None or self.rand_cat is None:
-            raise TypeError("Catalog must be imported.")
+            raise TypeError("Catalogs are not imported.")
 
         if weighted:
             # Calculate weighted normalization constant
