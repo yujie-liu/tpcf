@@ -1,6 +1,10 @@
 # Copyright: University of Rochester DESI group.
 # Authors: Tri Nguyen, Segev BenZvi, Regina Demina, Tolga Yapici
 
+# FINDING CATALOG BOUNDARIES
+# limit.py return the maximum and minimum RA, DEC, Z of each given catalog, and of 
+# all given catalogs. 
+
 # JOBS
 # We use divide.py to divide the program into multiple jobs.
 # Arguments:
