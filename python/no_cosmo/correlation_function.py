@@ -13,37 +13,48 @@ DEG2RAD = numpy.pi/180.
 RAD2DEG = 180./numpy.pi
 
 
-def import_fits(fname_key, fits_reader, cosmo):
+def import_fits(fname_key, fits_reader, region, cosmo):
     """ Import data into 2-d array
     Inputs:
     + fname_key: string
         Key for data filename in reader.
     + fits_readers: dict
-        Must have attributes: "INDEX"=index of headers. RA", "DEC", "Z",
+        Must have attributes: "INDEX"=index of headers. "RA", "DEC", "Z",
         "WEIGHT"=corresponded variable names in header.
-    + cosmol: cosmology.Cosmology
+    + region: dict
+        Region of galaxies to import. Must have attributes: "dec_max", "dec_min",
+        "ra_max", "ra_min", "z_min", "z_max"
+    + cosmo: cosmology.Cosmology
         Cosmological parameters to convert redshift to comoving distance.
     Outputs:
     + catalog: ndarray or tuple of ndarrays
         Return catalog format in each row [DEC, RA, R, WEIGHT].
     """
-    header_index = int(fits_reader["INDEX"])
+    header_index = int(fits_reader["index"])
     hdulist = fits.open(fits_reader[fname_key])
     tbdata = hdulist[header_index].data
-    temp_dec = DEG2RAD*tbdata[fits_reader["DEC"]]
-    temp_ra = DEG2RAD*tbdata[fits_reader["RA"]]
-    temp_r = cosmo.z2r(tbdata[fits_reader["Z"]])
+    temp_dec = DEG2RAD*tbdata[fits_reader["dec"]]
+    temp_ra = DEG2RAD*tbdata[fits_reader["ra"]]
+    temp_z = tbdata[fits_reader["z"]]
+    temp_r = cosmo.z2r(temp_z)
     try:
-        temp_weight_fkp = tbdata[fits_reader["WEIGHT_FKP"]]
-        temp_weight_noz = tbdata[fits_reader["WEIGHT_NOZ"]]
-        temp_weight_cp = tbdata[fits_reader["WEIGHT_CP"]]
-        temp_weight_sdc = tbdata[fits_reader["WEIGHT_SDC"]]
+        temp_weight_fkp = tbdata[fits_reader["weight_fkp"]]
+        temp_weight_noz = tbdata[fits_reader["weight_noz"]]
+        temp_weight_cp = tbdata[fits_reader["weight_cp"]]
+        temp_weight_sdc = tbdata[fits_reader["weight_sdc"]]
         temp_weight = (temp_weight_sdc*temp_weight_fkp*
                        (temp_weight_noz + temp_weight_cp -1))
     except KeyError:
-        temp_weight = tbdata[fits_reader["WEIGHT"]]
+        temp_weight = tbdata[fits_reader["weight"]]
+
     catalog = numpy.array([temp_dec, temp_ra, temp_r, temp_weight]).T
     hdulist.close()
+
+    # cut by region
+    # cut = ((region["dec_min"] <= temp_dec) & (temp_dec < region["dec_max"])
+           # &(region["ra_min"] <= temp_ra) & (temp_ra < region["ra_max"])
+           # &(region["z_min"] <= temp_z) & (temp_z < region["z_max"]))
+
     return catalog
 
 
@@ -115,6 +126,8 @@ class CorrelationFunction():
         variables."""
         config = configparser.ConfigParser()
         config.read(config_fname)
+        binnings = config['BINNING']
+        region = config['REGION']
 
         # Create cosmology
         cosmo_params = config["COSMOLOGY"]
@@ -132,27 +145,23 @@ class CorrelationFunction():
         self.rand_cat = None
         if not analysis_mode:
             reader = config['FITS']
-            self.data_cat = import_fits('data_filename', reader, cosmo)
-            self.rand_cat = import_fits('random_filename', reader, cosmo)
+            self.data_cat = import_fits('data_filename', reader, region, cosmo)
+            self.rand_cat = import_fits('random_filename', reader, region, cosmo)
 
         # Setting up binning variables
-        binnings = config['BINNING']
         binwidth_ra = DEG2RAD*float(binnings['binwidth_ra'])
         binwidth_dec = DEG2RAD*float(binnings['binwidth_dec'])
-        # binwidth of angular distance distribution
         binwidth_theta = DEG2RAD*float(binnings['binwidth_theta'])
         binwidth_r = float(binnings['binwidth_r'])
         binwidth_s = float(binnings['binwidth_s'])
-
-        dec_min = min(self.rand_cat[:, 0].min(), self.data_cat[:, 0].min())
-        dec_max = max(self.rand_cat[:, 0].max(), self.data_cat[:, 0].max())
-        ra_min = min(self.rand_cat[:, 1].min(), self.data_cat[:, 1].min())
-        ra_max = max(self.rand_cat[:, 1].max(), self.data_cat[:, 1].max())
-        r_min = min(self.rand_cat[:, 2].min(), self.data_cat[:, 2].min())
-        r_max = max(self.rand_cat[:, 2].max(), self.data_cat[:, 2].max())
-        s_max = float(binnings['s_max'])
-        # maximum angular distance to be considered between any given points
-        theta_max = numpy.arccos(1.-0.5*s_max**2/r_min**2)
+        dec_min = DEG2RAD*float(region["dec_min"])
+        dec_max = DEG2RAD*float(region["dec_max"])
+        ra_min = DEG2RAD*float(region["ra_min"])
+        ra_max = DEG2RAD*float(region["ra_max"])
+        r_min = cosmo.z2r(float(region["z_min"]))
+        r_max = cosmo.z2r(float(region["z_max"]))
+        s_max = float(region["s_max"])
+        theta_max = DEG2RAD*float(region["theta_max"])
 
         self.__bins_ra = get_bins(ra_min, ra_max, binwidth_ra)
         self.__bins_dec = get_bins(dec_min, dec_max, binwidth_dec)

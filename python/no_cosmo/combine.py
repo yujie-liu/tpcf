@@ -32,7 +32,7 @@ def main():
     config_fname = "{}_config.cfg".format(prefix)
     if not os.path.isfile(config_fname):
         raise IOError("Configuration file not found.")
-    tpcf = CorrelationFunction(config_fname)
+    tpcf = CorrelationFunction(config_fname, analysis_mode=True)
 
     # Calculate RR(s) and DR(s), DD(s)
     rand_rand, bins_s = tpcf.rand_rand(theta_hist, r_hist)

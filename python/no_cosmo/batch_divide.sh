@@ -1,10 +1,10 @@
 #!/bin/bash
 #SBATCH -p standard
 #SBATCH --array=0-99
-#SBATCH -t 2:00:00
-#SBATCH -J correlation_function
-#SBATCH -o /scratch/tnguy51/temp/tpcf_%j.out
-#SBATCH -e /scratch/tnguy51/temp/tpcf_%j.err
+#SBATCH -t 0:30:00
+#SBATCH -J tpcf
+#SBATCH -o /scratch/tnguy51/temp/tpcf_%a.out
+#SBATCH -e /scratch/tnguy51/temp/tpcf_%a.err
 #SBATCH --mail-type=END
 #SBATCH --mail-user=tnguy51@u.rochester.edu
 
@@ -21,8 +21,8 @@ cp -R $PROJECT/$TPCF $LOCAL
 cd $LOCAL/$TPCF
 
 # load python3 and run correlation function
-module load python3
-python divide $SLURM_ARRAY_TASK_ID 100 $CONFIG $PREFIX
+module load anaconda3/4.2.0
+python3 divide.py $SLURM_ARRAY_TASK_ID $((SLURM_ARRAY_TASK_MAX+1)) $CONFIG $PREFIX
 
 # copy back data to destination
 mkdir -p $DEST
