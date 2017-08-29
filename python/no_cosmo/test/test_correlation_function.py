@@ -48,7 +48,6 @@ class TestCorrelationFunction(unittest2.TestCase):
         print("- Same points test")
         self.assertAlmostEqual(funct(3., 3., 0.), 0.)
 
-
     def test_get_bins(self):
         """ Test function correlation_function.get_binnings(min, max, width) """
         print("\nTest get_binnings")
@@ -82,7 +81,7 @@ class TestCorrelationFunction(unittest2.TestCase):
         funct = correlation_function.hist2point
 
         # General case
-        print("- General case")
+        print("- General case test")
         x_edges = numpy.array([-4.7, -4.3, -3.9, -3.5])
         y_edges = numpy.array([2.5, 3.5, 4.5, 5.5])
         hist = numpy.array([[0, -2.4, 1.2], [6.5, 2., 3.3], [0., 0., 5.2]])
@@ -96,7 +95,7 @@ class TestCorrelationFunction(unittest2.TestCase):
                                           true_array)
 
         # General case without excluding zeros
-        print("- General case without excluding zeros")
+        print("- General case without excluding zeros test")
         true_array = numpy.array([[-4.5, 3.0, 0.],
                                   [-4.1, 3.0, 6.5],
                                   [-3.7, 3.0, 0.],
@@ -110,13 +109,13 @@ class TestCorrelationFunction(unittest2.TestCase):
                                           true_array)
 
         # Array with all zeros
-        print("- All zeros")
+        print("- All zeros test")
         hist = numpy.zeros_like(hist)
         numpy.testing.assert_almost_equal(funct(hist, x_edges, y_edges),
                                           numpy.array([]).reshape(0, 3))
 
         # Array with most zeros
-        print("- Most zeros")
+        print("- Most zeros test")
         hist = numpy.zeros_like(hist)
         hist[1][2] = 3.1
         hist[0][1] = 2.3
@@ -124,6 +123,7 @@ class TestCorrelationFunction(unittest2.TestCase):
                                   [-4.1, 5.0, 3.1]])
         numpy.testing.assert_almost_equal(funct(hist, x_edges, y_edges),
                                           true_array)
+
     def test_correlation_class(self):
         """ Test correlation_function.CorrelationFunction class """
         print("\nTest CorrelationFunction")
@@ -132,50 +132,50 @@ class TestCorrelationFunction(unittest2.TestCase):
         tpcf = correlation_function.CorrelationFunction("test/test_config.cfg")
 
         # Test normalization
-        print(" - Normalization")
+        print(" - Normalization test")
         norm = numpy.array([tpcf.normalization(weighted=True),
                             tpcf.normalization(weighted=False)])
         numpy.testing.assert_almost_equal(norm, test["NORM"])
 
         # Test comoving distribution P(r)
-        print(" - Comoving distribution: ")
+        print(" - Comoving distribution test ")
         r_hist, bins_r = tpcf.comoving_distribution()
         numpy.testing.assert_almost_equal(r_hist, test["R_HIST"])
         numpy.testing.assert_almost_equal(bins_r, test["BINS_PR"])
 
         # Test angular distribution f(theta)
-        print(" - Angular distribution f(theta): ")
+        print(" - Angular distribution f(theta) test ")
         theta_hist, bins_theta = tpcf.angular_distance(0, 1)
         numpy.testing.assert_almost_equal(theta_hist, test["ANGULAR_D"])
         numpy.testing.assert_almost_equal(bins_theta, test["BINS_FTHETA"])
 
         # Test angular-radial distribution g(theta, r)
-        print(" - Angular-radial distribution g(theta, r): ")
+        print(" - Angular-radial distribution g(theta, r) test ")
         r_theta_hist, bins_theta, bins_r = tpcf.r_angular_distance(0, 1)
         numpy.testing.assert_almost_equal(r_theta_hist, test["ANGULAR_R"])
         numpy.testing.assert_almost_equal(bins_theta, test["BINS_GTHETA"])
         numpy.testing.assert_almost_equal(bins_r, test["BINS_GR"])
 
         # Test random-random distribution RR(s)
-        print(" - Random-random distribution RR(s)")
+        print(" - Random-random distribution RR(s) test")
         rand_rand, bins_s = tpcf.rand_rand(theta_hist, r_hist)
         numpy.testing.assert_almost_equal(rand_rand, test["RR"])
         numpy.testing.assert_almost_equal(bins_s, test["BINS_RR"])
 
         # Test data-random distribution DR(s)
-        print(" - Data-random distribution DR(s)")
+        print(" - Data-random distribution DR(s) test")
         data_rand, bins_s = tpcf.data_rand(r_theta_hist, r_hist)
         numpy.testing.assert_almost_equal(data_rand, test["DR"])
         numpy.testing.assert_almost_equal(bins_s, test["BINS_DR"])
 
         # Test data-data distribution DD(s)
-        print(" - Data-data distribution DD(s)")
+        print(" - Data-data distribution DD(s) test")
         data_data, bins_s = tpcf.data_data(0, 1)
         numpy.testing.assert_almost_equal(data_data, test["DD"])
         numpy.testing.assert_almost_equal(bins_s, test["BINS_DD"])
 
         # Test correlation function
-        print(" - Correlation")
+        print(" - Correlation test")
         correlation = tpcf.correlation(rand_rand[0], data_rand[0], data_data[0],
                                        bins_s)
         numpy.testing.assert_almost_equal(correlation, test["TPCF"])
