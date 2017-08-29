@@ -99,6 +99,8 @@ def get_distance(radius1, radius2, theta):
 def get_bins(x_min, x_max, binwidth):
     """ Return the binnings given min, max and width """
     nbins = int(numpy.ceil((x_max-x_min)/binwidth))
+    if nbins <= 0:
+        raise Exception("Max must be greater than Min.")
     return numpy.linspace(x_min, x_max, nbins+1)
 
 def get_job_index(no_job, total_jobs, job_size):
