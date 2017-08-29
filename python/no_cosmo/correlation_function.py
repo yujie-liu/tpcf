@@ -18,7 +18,7 @@ def import_fits(fname_key, fits_reader, region, cosmo):
     Inputs:
     + fname_key: string
         Key for data filename in reader.
-    + fits_readers: dict
+    + fits_reader: dict
         Must have attributes: "INDEX"=index of headers. "RA", "DEC", "Z",
         "WEIGHT"=corresponded variable names in header.
     + region: dict
@@ -30,6 +30,8 @@ def import_fits(fname_key, fits_reader, region, cosmo):
     + catalog: ndarray or tuple of ndarrays
         Return catalog format in each row [DEC, RA, R, WEIGHT].
     """
+    print("Importing from: {}".format(fits_reader[fname_key]))
+
     header_index = int(fits_reader["index"])
     hdulist = fits.open(fits_reader[fname_key])
     tbdata = hdulist[header_index].data
@@ -51,11 +53,18 @@ def import_fits(fname_key, fits_reader, region, cosmo):
     hdulist.close()
 
     # cut by region
-    # cut = ((region["dec_min"] <= temp_dec) & (temp_dec < region["dec_max"])
-           # &(region["ra_min"] <= temp_ra) & (temp_ra < region["ra_max"])
-           # &(region["z_min"] <= temp_z) & (temp_z < region["z_max"]))
+    dec_min = DEG2RAD*float(region["dec_min"])
+    dec_max = DEG2RAD*float(region["dec_max"])
+    ra_min = DEG2RAD*float(region["ra_min"])
+    ra_max = DEG2RAD*float(region["ra_max"])
+    r_min = cosmo.z2r(float(region["z_min"]))
+    r_max = cosmo.z2r(float(region["z_max"]))
+    cut = ((dec_min <= temp_dec) & (temp_dec <= dec_max)
+           & (ra_min <= temp_ra) & (temp_ra <= ra_max)
+           & (r_min <= temp_r) & (temp_r <= r_max))
 
-    return catalog
+    print("Data size: {}".format(numpy.sum(cut)))
+    return catalog[cut]
 
 
 def hist2point(hist, bins_x, bins_y, exclude_zeros=True):
@@ -94,6 +103,8 @@ def get_distance(radius1, radius2, theta):
 def get_bins(x_min, x_max, binwidth):
     """ Return the binnings given min, max and width """
     nbins = int(numpy.ceil((x_max-x_min)/binwidth))
+    if nbins <= 0:
+        raise Exception("Max must be greater than Min.")
     return numpy.linspace(x_min, x_max, nbins+1)
 
 def get_job_index(no_job, total_jobs, job_size):

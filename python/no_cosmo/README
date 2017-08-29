@@ -30,7 +30,6 @@
 #   Call "python3 combine.py config.cfg out/sample to combine out/sample* and 
 #   calculate two-point correlations. The output will be in directory "out" as "sample_final.npz"
 
-
 # CONFIGURATION FILES
 # Configuration files should be divided into python configuration sections.
 # Example:
