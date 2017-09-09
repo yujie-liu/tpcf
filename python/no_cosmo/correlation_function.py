@@ -67,6 +67,33 @@ def import_fits(fname_key, fits_reader, region, cosmo):
     return catalog[cut]
 
 
+def celestial2cart(declination, right_ascension, radius):
+    """ Convert Celestial coordiante into Cartesian coordinate system
+        Conversion equation is:
+         -x = r*cos(dec)*cos(ra)
+         -y = r*cos(dec)*sin(ra)
+         -z = r*sin(dec)
+        Inputs:
+        + declination: array
+            Values of DEC, declination, in radian.
+        + right_ascension: array
+            Values of RA, right ascension, in radian.
+        + radius: array
+            Values of the radius. Should have dimension of length.
+        Outputs:
+        + cart_x: array
+            Values of X, same unit with radius.
+        + cart_y: array
+            Values of Y, same unit with radius.
+        + cart_z: array
+            Values of Z. same unit with radius.
+        """
+    cart_x = radius*numpy.cos(declination)*numpy.cos(right_ascension)
+    cart_y = radius*numpy.cos(declination)*numpy.sin(right_ascension)
+    cart_z = radius*numpy.sin(declination)
+    return cart_x, cart_y, cart_z
+
+
 def hist2point(hist, bins_x, bins_y, exclude_zeros=True):
     """ Convert 2d histogram into data points with weight. Take bincenter as
         value of points.
@@ -94,6 +121,7 @@ def hist2point(hist, bins_x, bins_y, exclude_zeros=True):
         return catalog[hist != 0]
     return catalog
 
+
 def get_distance(radius1, radius2, theta):
     """ Given two points at radius1 and radius2 with angular separation
     theta (in rad), calulate distance between points"""
@@ -106,6 +134,7 @@ def get_bins(x_min, x_max, binwidth):
     if nbins <= 0:
         raise Exception("Max must be greater than Min.")
     return numpy.linspace(x_min, x_max, nbins+1)
+
 
 def get_job_index(no_job, total_jobs, job_size):
     """ Calculate start and end index based on job number, total number of jobs,
@@ -301,53 +330,57 @@ class CorrelationFunction():
 
         return r_theta_hist
 
-    def __data_data_thread(self, data_cat, data_tree, start, end):
-        """ Thread function for calculating separation distribution DD(s)
-        between pairs of galaxies.
+    def __pairs_separation_thread(self, point_cat, tree_cat, tree, start, end):
+        """ Thread function for calculating separation distribution.
         Inputs:
-        + data_cat: ndarray or tupless of ndarray
-            Galaxies catalog in Cartesian coordinates. Each row format [X,Y,Z].
-        + data_tree: k-d tree
-            K-D tree fill with data in galaxies catalog. For more details,
-            refer to sklearn.neighbors.KDTree
+        + point_cat: ndarray or tupless of ndarray
+            Point catalog in Cartesian coordinates outside tree.
+            Each row format [X,Y,Z].
+        + tree_cat: ndarray or tupless of ndarray
+            Galaxies catalog in Cartesian coordinates inside tree.
+            Each row format [X,Y,Z].
+        + tree: kd-tree
+            K-D tree filled with points from tree_cat.
         + start: int
             Starting index of galaxies in galaxies catalog: index_start = start.
         + end: int
             Ending index of galaxies in galaxies catalog: index_end = end-1.
         Outputs:
-        + data_data: ndarrays or tuples of ndarrays
+        + pairs_seprtion: ndarrays or tuples of ndarrays
             Return values of weighted and unweighted DD(s) respectively.
         """
         # Define weighted and unweighted DD(s) as two one-dimensional
         # histograms respectively.
         nbins_s = self.__bins_s.size-1
         s_max = self.__bins_s.max()
-        data_data = numpy.zeros((2, nbins_s))
+        pairs_separation = numpy.zeros((2, nbins_s))
 
         print("Calculate DD(s) from index {} to {}".format(start, end-1))
-        for i, point in enumerate(data_cat[start:end]):
+        for i, point in enumerate(point_cat[start:end]):
             if i % 10000 is 0:
                 print(i)
-            index, dist = data_tree.query_radius(point[: 3].reshape(1, -1),
-                                                 r=s_max,
-                                                 return_distance=True)
+            index, dist = tree.query_radius(point[: 3].reshape(1, -1),
+                                            r=s_max,
+                                            return_distance=True)
             # Fill weighted histogram
-            temp_weight = data_cat[:, 3][index[0]]*point[3]
+            temp_weight = tree_cat[:, 3][index[0]]*point[3]
             temp_hist, _ = numpy.histogram(dist[0], bins=nbins_s,
                                            range=(0., s_max),
                                            weights=temp_weight)
-            data_data[0] += temp_hist
+            pairs_separation[0] += temp_hist
             # Fill unweighted histogram
             temp_hist, _ = numpy.histogram(dist[0], bins=nbins_s,
                                            range=(0., s_max))
-            data_data[1] += temp_hist
+            pairs_separation[1] += temp_hist
 
         # Correction for double counting
-        data_data[0][0] -= numpy.sum(data_cat[start:end, 3]**2) # sum of w^2
-        data_data[1][0] -= end-start
-        data_data = data_data/2.
+        if numpy.array_equal(point_cat, tree_cat):
+            # sum of w^2
+            pairs_separation[0][0] -= numpy.sum(point_cat[start:end, 3]**2)
+            pairs_separation[1][0] -= end-start
+            pairs_separation = pairs_separation/2.
 
-        return data_data
+        return pairs_separation
 
     def comoving_distribution(self):
         """ Calculate weighted and unweighted comoving distribution P(r) as
@@ -581,9 +614,9 @@ class CorrelationFunction():
 
         return data_rand, self.__bins_s
 
-    def data_data(self, no_job, total_jobs, leaf=40):
-        """ Calculate separation distribution DD(s) between pairs of galaxies.
-        Use a modified nearest-neighbors KDTree algorithm to calculate distance
+    def pairs_separation(self, no_job, total_jobs, out="DD", leaf=40):
+        """ Calculate separation distribution between pairs of galaxies.
+        Use a modfied nearest-neighbors k-d tree algorithm to calculate distance
         up to a given radius defined in config file.
         Metric: Euclidean (or Minkowski with p=2).
         Inputs:
@@ -592,44 +625,60 @@ class CorrelationFunction():
             (0 <= no_job < total_jobs).
         + total_jobs: int
             Total number of jobs.
-        + leaf: int
-            Number of points at which to switch to brute-force. For a specified
-            leaf_size, a leaf node is guaranteed to satisfy
-            leaf_size <= n_points <= 2*leaf_size, except in the case that
-            n_samples < leaf_size. More details in sklearn.neighbors.KDTree.
+        + out: string (default="DD")
+            Valid argument are "RR", "DR", DD". Distribution to calculate.
         Outputs:
-        + data_data: ndarrays or tuples of ndarrays
-            Return values of weighted and unweighted DD(s) respectively.
+        + pairs_separation: ndarrays or tuples of ndarrays
+            Return values of weighted and unweighted pairs_separation respectively.
         + bins: array
             Binedges of DD(s) (length(data_data_hist)+1).
         """
         if self.data_cat is None or self.rand_cat is None:
             raise TypeError("Catalogs are not imported.")
 
-        # Convert Celestial coordinate into Cartesian coordinate
-        # Conversion equation is:
-        # x = r*cos(dec)*cos(ra)
-        # y = r*cos(dec)*sin(ra)
-        # z = r*sin(dec
-        temp_dec = self.data_cat[:, 0]
-        temp_ra = self.data_cat[:, 1]
-        temp_r = self.data_cat[:, 2]
-        temp_weight = self.data_cat[:, 3]
-        cart_x = temp_r*numpy.cos(temp_dec)*numpy.cos(temp_ra)
-        cart_y = temp_r*numpy.cos(temp_dec)*numpy.sin(temp_ra)
-        cart_z = temp_r*numpy.sin(temp_dec)
-        cart_cat = numpy.array([cart_x, cart_y, cart_z, temp_weight]).T
+        # Choose catalogs based on input
+        if out == "DD":
+            tree_cat = self.data_cat
+            point_cat = self.data_cat
+        elif out == "RR":
+            tree_cat = self.rand_cat
+            point_cat = self.rand_cat
+        elif out == "DR":
+            # Optimizing: Run time of k-d tree modified nearest-neighbors is
+            # O(NlogM) where M is the number of points in Tree and N is the
+            # number of points for pairings. Thus, the kd-tree is created using
+            # the smaller of galaxies catalog and randoms catalog.
+            if self.data_cat.shape[0] > self.rand_cat.shape[0]:
+                tree_cat = self.data_cat
+                point_cat = self.rand_cat
+            else:
+                tree_cat = self.rand_cat
+                point_cat = self.data_cat
+
+        # Convert Celestial coordinate into Cartesian coordinate and create
+        # k-d tree and point cartesian catalog.
+        # Point cartesian catalog
+        temp = celestial2cart(point_cat[:, 0], point_cat[:, 1], point_cat[:, 2])
+        cart_point_cat = numpy.array([temp[0], temp[1], temp[2],
+                                      point_cat[:, 3]]).T
+
+        # k-d tree
+        temp = celestial2cart(tree_cat[:, 0], tree_cat[:, 1], tree_cat[:, 2])
+        cart_tree_cat = numpy.array([temp[0], temp[1], temp[2],
+                                     tree_cat[:, 3]]).T
+        tree = KDTree(cart_tree_cat[:, :3], leaf_size=leaf, metric='euclidean')
 
         # Calculate start and end index based on job number and total number of
         # jobs.
-        job_range = get_job_index(no_job, total_jobs, cart_cat.shape[0])
+        job_range = get_job_index(no_job, total_jobs, cart_point_cat.shape[0])
 
-        # Create KD-tree and compute DD(s) using modified nearest-neighbors
-        # algorithm to calculate angular distance up to a given radius.
-        cart_tree = KDTree(cart_cat[:, :3], leaf_size=leaf, metric='euclidean')
-        data_data = self.__data_data_thread(cart_cat, cart_tree, *job_range)
+        # Compute pairs separation using modified nearest-neighbors algorithm to calculate
+        # angular distance up to a given radius.
+        pairs_separation = self.__pairs_separation_thread(cart_point_cat,
+                                                          cart_tree_cat, tree,
+                                                          *job_range)
 
-        return data_data, self.__bins_s
+        return pairs_separation, self.__bins_s
 
     def correlation(self, rand_rand, data_rand, data_data, bins):
         """ Construct two-point correlation function.
@@ -641,7 +690,7 @@ class CorrelationFunction():
             Values of separation distribution between pairs of a random point
             and a galaxy DR(s).
         + data_data: array
-            Valus of separation distribution between paris of galaxies DD(s).
+            Valus of separation distribution between pairs of galaxies DD(s).
         Note: rand_rand, data_rand, data_data must have the same size.
         + bins: array
             Binedges of rand_rand, data_rand, data_data.

@@ -170,7 +170,7 @@ class TestCorrelationFunction(unittest2.TestCase):
 
         # Test data-data distribution DD(s)
         print(" - Data-data distribution DD(s) test")
-        data_data, bins_s = tpcf.data_data(0, 1)
+        data_data, bins_s = tpcf.pairs_separation(0, 1, out="DD")
         numpy.testing.assert_almost_equal(data_data, test["DD"])
         numpy.testing.assert_almost_equal(bins_s, test["BINS_DD"])
 
