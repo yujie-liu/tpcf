@@ -2,7 +2,7 @@
 #SBATCH -p standard
 #SBATCH --array=0-99
 #SBATCH -t 0:30:00
-#SBATCH -J tpcf
+#SBATCH -J tpcf_python
 #SBATCH -o /scratch/tnguy51/temp/tpcf_%a.out
 #SBATCH -e /scratch/tnguy51/temp/tpcf_%a.err
 #SBATCH --mail-type=END
@@ -10,11 +10,11 @@
 
 # define path and file
 PROJECT=/scratch/tnguy51/project
-TPCF=correlation
+TPCF=correlation_python
 LOCAL=/local_scratch/$SLURM_JOB_ID
 CONFIG=batch_config.cfg
 PREFIX=BOSS_North
-DEST=/scratch/tnguy51/project_output/correlation
+DEST=/scratch/tnguy51/project_output/correlation_python
 
 # copy workspace to local scratch
 cp -R $PROJECT/$TPCF $LOCAL

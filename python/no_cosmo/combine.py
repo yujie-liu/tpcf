@@ -37,10 +37,18 @@ def main():
     # Calculate RR(s) and DR(s), DD(s)
     rand_rand, bins_s = tpcf.rand_rand(theta_hist, r_hist)
     data_rand, _ = tpcf.data_rand(r_theta_hist, r_hist)
+    # Get error
+    err_rand_rand = tpcf.get_error(rand_rand[0], rand_rand[1])
+    err_data_rand = tpcf.get_error(data_rand[0], data_rand[1])
+    err_data_data = tpcf.get_error(data_data[0], data_data[0])
+    # Normalize
     for i in range(2):
         rand_rand[i] = rand_rand[i]/norm[i][0]
         data_rand[i] = data_rand[i]/norm[i][1]
         data_data[i] = data_data[i]/norm[i][2]
+        err_rand_rand[i] /= numpy.sqrt(norm[i][0])
+        err_data_rand[i] /= numpy.sqrt(norm[i][1])
+        err_data_data[i] /= numpy.sqrt(norm[i][2])
 
     # Construct two-point correlation function, both weighted and unweighted
     correlation = numpy.zeros((2, 2, bins_s.size-1))
@@ -52,6 +60,7 @@ def main():
     # Save results
     numpy.savez("{}_final".format(prefix),
                 DD=data_data, RR=rand_rand, DR=data_rand,
+                ERR_DD=err_data_data, ERR_RR=err_rand_rand, ERR_DR=err_data_rand,
                 TPCF=correlation[:, 0], TPCFSS=correlation[:, 1],
                 BINS=bins_s)
 
