@@ -699,6 +699,11 @@ class CorrelationFunction():
             Total number of jobs.
         + out: string (default="DD")
             Valid argument are "RR", "DR", DD". Distribution to calculate.
+        + leaf: int (default=40)
+            Number of points at which to switch to brute-force. For a specified
+            leaf_size, a leaf node is guaranteed to satisfy
+            leaf_size <= n_points <= 2*leaf_size, except in the case that
+            n_samples < leaf_size. More details in sklearn.neighbors.KDTree.
         Outputs:
         + pairs_separation: ndarrays or tuples of ndarrays
             Return values of weighted and unweighted pairs_separation
