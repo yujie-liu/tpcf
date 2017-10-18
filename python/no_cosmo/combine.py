@@ -14,6 +14,8 @@ def main():
     # Combining histogram by simply taking the sum in each bin
     fname_list = sorted(glob.glob("{}*.npz".format(prefix)))
     for i, fname in enumerate(fname_list):
+        if "_final.npz" in fname:
+            continue
         print("Reading from {}".format(fname))
         temp_file = numpy.load(fname)
         if i is 0:
