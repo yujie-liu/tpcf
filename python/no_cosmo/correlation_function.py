@@ -165,7 +165,7 @@ def get_job_index(no_job, total_jobs, job_size):
 
 class CorrelationFunction():
     """ Class to construct two-point correlation function """
-    def __init__(self, config_fname, analysis_mode=False):
+    def __init__(self, config_fname, import_catalog=True):
         """ Constructor takes in configuration file and sets up binning
         variables """
         # Initialize variables
@@ -176,7 +176,7 @@ class CorrelationFunction():
         self.__bins_r = None
         self.__bins_s = None
         self.__bins_theta = None
-        self.set_configuration(config_fname, analysis_mode)
+        self.set_configuration(config_fname, import_catalog)
 
     def __angular_distance_thread(self, angular_points, arc_tree, start, end):
         """ Thread function to calculate angular distance distribution f(theta)
@@ -371,7 +371,7 @@ class CorrelationFunction():
                         list(map(float, cosmo_params["m_nu"].split(","))))
 
         # Import random and data catalogs
-        if not import_catalog:
+        if import_catalog:
             reader = config['FITS']
             self.data_cat = import_fits('data_filename', reader, region, cosmo)
             self.rand_cat = import_fits('random_filename', reader, region,
@@ -435,9 +435,13 @@ class CorrelationFunction():
         print("-[Min, Max, Binwidth] = [{}, {}, {}]".format(0., theta_max,
                                                             binwidth_theta))
 
-    def comoving_distribution(self):
+    def comoving_distribution(self, catalog_type="random"):
         """ Calculate weighted and unweighted comoving distribution P(r) as
         two one-dimensional histograms.
+        Inputs:
+        + catalog_type: string (default=random)
+            Catalog to calculate comoving distribution. Must be either
+            "random" or "data".
         Outputs:
         + hist: array
             Values of weighted and unweighted P(r).
@@ -447,13 +451,19 @@ class CorrelationFunction():
         if self.data_cat is None or self.rand_cat is None:
             raise TypeError("Catalogs are not imported.")
 
+        # Choose catalog based on input
+        if catalog_type == "random":
+            catalog = self.rand_cat
+        else:
+            catalog = self.data_cat
+
         # Calculate weighted and unweighted radial distribution P(r) as two
         # one-dimensional histograms respectively.
         r_hist = numpy.zeros((2, self.__bins_r.size-1))
         r_hist[0] += numpy.histogram(self.rand_cat[:, 2], bins=self.__bins_r,
                                      weights=self.rand_cat[:, 3])[0]
         r_hist[1] += numpy.histogram(self.rand_cat[:, 2], bins=self.__bins_r)[0]
-        r_hist = 1.*r_hist/self.rand_cat.shape[0]
+        r_hist = 1.*r_hist/catalog.shape[0]
 
         return r_hist, self.__bins_r
 
