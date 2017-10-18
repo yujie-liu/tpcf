@@ -14,7 +14,7 @@ def main():
     # Combining histogram by simply taking the sum in each bin
     fname_list = sorted(glob.glob("{}*.npz".format(prefix)))
     for i, fname in enumerate(fname_list):
-        if "_final.npz" in fname:
+        if fname == "{}_final.npz".format(prefix):
             continue
         print("Reading from {}".format(fname))
         temp_file = numpy.load(fname)
@@ -34,7 +34,7 @@ def main():
     config_fname = "{}_config.cfg".format(prefix)
     if not os.path.isfile(config_fname):
         raise IOError("Configuration file not found.")
-    tpcf = CorrelationFunction(config_fname, analysis_mode=True)
+    tpcf = CorrelationFunction(config_fname, import_catalog=True)
 
     # Calculate RR(s) and DR(s), DD(s)
     rand_rand, bins_s = tpcf.rand_rand(theta_hist, r_hist)
