@@ -23,12 +23,16 @@ def main():
     config_fname = sys.argv[3]
     prefix = sys.argv[4]
 
+    # Calculate child-process data
+    print("Job number: {}. Total jobs: {}.".format(no_job, total_jobs))
+    # Save configuration files
+    if no_job is 0:
+        subprocess.call("cp {} {}_config.cfg".format(config_fname, prefix).split())
+
     # Create an instance of two-point correlation function that reads in
     # configuration file
     tpcf = CorrelationFunction(config_fname)
 
-    # Calculate child-process data
-    print("Job number: {}. Total jobs: {}.".format(no_job, total_jobs))
     # Galaxies separation distribution RR, DR, DD(s)
     rand_rand, bins_s = tpcf.pairs_separation(no_job, total_jobs, out="RR")
     data_rand, _ = tpcf.pairs_separation(no_job, total_jobs, out="DR")
@@ -42,8 +46,6 @@ def main():
         numpy.savez("{}_{:03d}".format(prefix, no_job),
                     RR=rand_rand, DR=data_rand, DD=data_data, BINS_S=bins_s,
                     NORM=norm)
-        # Save configuration files
-        subprocess.call("cp {} {}_config.cfg".format(config_fname, prefix).split())
     else:
         numpy.savez("{}_{:03d}".format(prefix, no_job),
                     RR=rand_rand, DR=data_rand, DD=data_data)
