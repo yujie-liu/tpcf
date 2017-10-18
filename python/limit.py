@@ -2,8 +2,10 @@
 
 import sys
 import numpy
+import cosmology
 from astropy.io import fits
 
+RAD2DEG = 180./numpy.pi
 
 def main():
     """ Main """
@@ -41,7 +43,9 @@ def main():
     print("RA:  [{}, {}]".format(ra_min, ra_max))
     print("DEC: [{}, {}]".format(dec_min, dec_max))
     print("Z:   [{}, {}]".format(z_min, z_max))
-
+ # acos(1.-pow(s_max,2)/(2*pow(r_min, 2)));
+    cosmo = cosmology.Cosmology()
+    print(RAD2DEG*numpy.arccos(1.-200.**2/(2*cosmo.z2r(z_min)**2)));
 
 if __name__ == "__main__":
     main()
