@@ -1,13 +1,6 @@
 # Copyright: University of Rochester DESI group.
 # Authors: Tri Nguyen, Segev BenZvi, Regina Demina, Tolga Yapici
 
-# FINDING CATALOG BOUNDARIES
-# limit.py return the maximum and minimum RA, DEC, Z of each given catalog, and of 
-# all given catalogs. 
-# Example:
-#   Call "python3 limit.py catalog1 catalog2" will print out the maximum and minimum
-#   RA, DEC, Z of catalog1 and catalog2, and the maximum and minimum RA, DEC, Z of both.
-
 # JOBS
 # We use divide.py to divide the program into multiple jobs.
 # Arguments:
@@ -27,8 +20,9 @@
 #   for divide.py.
 #   + Prefix: Prefix of the output files from divide.py
 # Example:
-#   Call "python3 combine.py config.cfg out/sample to combine out/sample* and 
-#   calculate two-point correlations. The output will be in directory "out" as "sample_final.npz"
+#   Call "python3 combine.py cosmology.cfg out/sample" to combine "out/sample* and 
+#   calculate two-point correlations using the cosmology in cosmology.cfg. 
+#   The output will be in directory "out" as "sample_final.npz"
 
 # CONFIGURATION FILES
 # Configuration files should be divided into python configuration sections.
