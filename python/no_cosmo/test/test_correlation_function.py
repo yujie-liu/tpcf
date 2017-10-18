@@ -56,17 +56,23 @@ class TestCorrelationFunction(unittest2.TestCase):
         # Range is a factor of binwidth
         print("- Range is a factor of binwidth test")
         true_array = numpy.array([6.4, 6.9, 7.4, 7.9])
-        numpy.testing.assert_almost_equal(funct(6.4, 7.9, 0.5), true_array)
+        test_array, test_binwidth = funct(6.4, 7.9, 0.5)
+        numpy.testing.assert_almost_equal(test_array, true_array)
+        self.assertAlmostEqual(test_binwidth, 0.5)
 
         # Range is not a factor of binwidth
         print("- Range is a not factor of binwidth test")
         true_array = numpy.array([6.4, 6.78, 7.16, 7.54, 7.92])
-        numpy.testing.assert_almost_equal(funct(6.4, 7.92, 0.5), true_array)
+        test_array, test_binwidth = funct(6.4, 7.92, 0.5)
+        numpy.testing.assert_almost_equal(test_array, true_array)
+        self.assertAlmostEqual(test_binwidth, 0.38)
 
         # Range goes from negative to postive
         print("- Range goes from negative to positive test")
         true_array = numpy.array([-1.3, -0.77, -0.24, 0.29, 0.82])
-        numpy.testing.assert_almost_equal(funct(-1.3, 0.82, 0.65), true_array)
+        test_array, test_binwidth = funct(-1.3, 0.82, 0.65)
+        numpy.testing.assert_almost_equal(test_array, true_array)
+        self.assertAlmostEqual(test_binwidth, 0.53)
 
         # Min is greater than Max. Check for exception
         print("- Min is greater than Max test")
@@ -151,8 +157,8 @@ class TestCorrelationFunction(unittest2.TestCase):
 
         # Test angular-radial distribution g(theta, r)
         print(" - Angular-radial distribution g(theta, r) test ")
-        r_theta_hist, bins_theta, bins_r = tpcf.r_angular_distance(0, 1)
-        numpy.testing.assert_almost_equal(r_theta_hist, test["ANGULAR_R"])
+        theta_r_hist, bins_theta, bins_r = tpcf.angular_comoving(0, 1)
+        numpy.testing.assert_almost_equal(theta_r_hist, test["ANGULAR_R"])
         numpy.testing.assert_almost_equal(bins_theta, test["BINS_GTHETA"])
         numpy.testing.assert_almost_equal(bins_r, test["BINS_GR"])
 
@@ -164,7 +170,7 @@ class TestCorrelationFunction(unittest2.TestCase):
 
         # Test data-random distribution DR(s)
         print(" - Data-random distribution DR(s) test")
-        data_rand, bins_s = tpcf.data_rand(r_theta_hist, r_hist)
+        data_rand, bins_s = tpcf.data_rand(theta_r_hist, r_hist)
         numpy.testing.assert_almost_equal(data_rand, test["DR"])
         numpy.testing.assert_almost_equal(bins_s, test["BINS_DR"])
 

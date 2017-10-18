@@ -27,7 +27,6 @@ def main():
     if no_job is 0:
         subprocess.call("cp {} {}_config.cfg".format(config_fname, prefix).split())
 
-
     # Create an instance of two-point correlation function that reads in
     # configuration file
     tpcf = CorrelationFunction(config_fname)
@@ -35,7 +34,7 @@ def main():
     # Angular distance distribution f(theta)
     theta_hist, _ = tpcf.angular_distance(no_job, total_jobs)
     # Radial angular distribution g(theta, r)
-    r_theta_hist, _, _ = tpcf.r_angular_distance(no_job, total_jobs)
+    theta_r_hist, _, _ = tpcf.angular_comoving(no_job, total_jobs)
     # Galaxies separation distribution DD(s)
     data_data, _ = tpcf.pairs_separation(no_job, total_jobs, out="DD")
 
@@ -46,11 +45,11 @@ def main():
         norm = numpy.array([tpcf.normalization(weighted=True),
                             tpcf.normalization(weighted=False)])
         numpy.savez("{}_{:03d}".format(prefix, no_job),
-                    DD=data_data, ANGULAR_D=theta_hist, ANGULAR_R=r_theta_hist,
+                    DD=data_data, ANGULAR_D=theta_hist, ANGULAR_R=theta_r_hist,
                     R_HIST=r_hist, NORM=norm)
     else:
         numpy.savez("{}_{:03d}".format(prefix, no_job),
-                    DD=data_data, ANGULAR_D=theta_hist, ANGULAR_R=r_theta_hist)
+                    DD=data_data, ANGULAR_D=theta_hist, ANGULAR_R=theta_r_hist)
 
 
 if __name__ == "__main__":

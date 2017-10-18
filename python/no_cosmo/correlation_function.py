@@ -219,9 +219,9 @@ class CorrelationFunction():
 
         return theta_hist
 
-    def __r_angular_distance_thread(self, angular_points, arc_tree,
-                                    start, end, mode):
-        """ Thread function for calculating radial angular distribution
+    def __angular_comoving_thread(self, angular_points, arc_tree,
+                                  start, end, mode):
+        """ Thread function for calculating angular comoving distribution
         g(theta, r) as two-dimensional histogram.
         Inputs:
         + angular_points: ndarray
@@ -238,7 +238,7 @@ class CorrelationFunction():
             Must be either "data" or "angular". If "data", loop over galaxies
             catalog. If "angular", loop over angular distribution points.
         Outputs:
-        + r_theta_hist: ndarray or tuple of ndarrays
+        + theta_r_hist: ndarray or tuple of ndarrays
             Return values of weighted and unweighted g(theta, r) respectively.
             Each has dimension (length(bins_theta)-1, length(bins_r)-1).
         """
@@ -249,7 +249,7 @@ class CorrelationFunction():
         theta_max = self.__bins_theta.max()
         bins_range = ((0., theta_max),
                       (self.__bins_r.min(), self.__bins_r.max()))
-        r_theta_hist = numpy.zeros((2, nbins_theta, nbins_r))
+        theta_r_hist = numpy.zeros((2, nbins_theta, nbins_r))
 
         print("Construct g(theta, r) from index {} to {}".format(start, end-1))
         if mode == "data":
@@ -266,14 +266,14 @@ class CorrelationFunction():
                                                     bins=(nbins_theta, nbins_r),
                                                     range=bins_range,
                                                     weights=temp_weight)
-                r_theta_hist[1] += temp_hist
+                theta_r_hist[1] += temp_hist
                 # Fill weighted histogram
                 temp_weight = temp_weight*point[3]
                 temp_hist, _, _ = numpy.histogram2d(theta[0], temp_r,
                                                     bins=(nbins_theta, nbins_r),
                                                     range=bins_range,
                                                     weights=temp_weight)
-                r_theta_hist[0] += temp_hist
+                theta_r_hist[0] += temp_hist
         elif mode == "angular":
             for i, point in enumerate(angular_points[start:end]):
                 if i % 10000 is 0:
@@ -288,16 +288,16 @@ class CorrelationFunction():
                                                     bins=(nbins_theta, nbins_r),
                                                     range=bins_range,
                                                     weights=temp_weight)
-                r_theta_hist[0] += temp_hist
+                theta_r_hist[0] += temp_hist
                 # Fill unweighted histogram
                 temp_weight = numpy.repeat(point[2], index[0].size)
                 temp_hist, _, _ = numpy.histogram2d(theta[0], temp_r,
                                                     bins=(nbins_theta, nbins_r),
                                                     range=bins_range,
                                                     weights=temp_weight)
-                r_theta_hist[1] += temp_hist
+                theta_r_hist[1] += temp_hist
 
-        return r_theta_hist
+        return theta_r_hist
 
     def __pairs_separation_thread(self, point_cat, tree_cat, tree, start, end):
         """ Thread function for calculating separation distribution.
@@ -512,7 +512,7 @@ class CorrelationFunction():
 
         return theta_hist, self.__bins_theta
 
-    def r_angular_distance(self, no_job, total_jobs, leaf=40):
+    def angular_comoving(self, no_job, total_jobs, leaf=40):
         """ Calculate g(theta, r), angular distance vs. comoving distribution,
         as a two-dimensional histogram. Binnings are defined in config file.
         Use a modified nearest-neighbors BallTree algorithm to calculate
@@ -529,7 +529,7 @@ class CorrelationFunction():
             leaf_size <= n_points <= 2*leaf_size, except in the case that
             n_samples < leaf_size. More details in sklearn.neighbors.BallTree.
         Outputs:
-        + r_theta_hist: ndarray or tuple of ndarrays
+        + theta_r_hist: ndarray or tuple of ndarrays
             Return values of weighted and unweighted g(theta, r) respectively.
             Each has dimension (length(bins_theta)-1, length(bins_r)-1).
         + bins_theta: array
@@ -571,12 +571,12 @@ class CorrelationFunction():
         # Calculate start and end index based on job number and total number of
         # jobs.
         job_range = get_job_index(no_job, total_jobs, job_size)
-        r_theta_hist = self.__r_angular_distance_thread(angular_points,
-                                                        arc_tree,
-                                                        job_range[0],
-                                                        job_range[1], mode)
+        theta_r_hist = self.__angular_comoving_thread(angular_points,
+                                                      arc_tree,
+                                                      job_range[0],
+                                                      job_range[1], mode)
 
-        return r_theta_hist, self.__bins_theta, self.__bins_r
+        return theta_r_hist, self.__bins_theta, self.__bins_r
 
     def rand_rand(self, theta_hist, r_hist):
         """ Calculate separation distribution RR(s) between pairs of randoms.
@@ -638,11 +638,11 @@ class CorrelationFunction():
 
         return rand_rand, self.__bins_s
 
-    def data_rand(self, r_theta_hist, r_hist):
+    def data_rand(self, theta_r_hist, r_hist):
         """ Calculate separation distribution DR(s) between pairs of a random
         point and a galaxy.
         Inputs:
-        + r_theta_hist: ndarrays or tuples of ndarrays
+        + theta_r_hist: ndarrays or tuples of ndarrays
             Values of weighted and unweighted g(theta, r) respectively.
             Dimension must be (2, length(bins_theta)-1, length((bins_r)-1).
         + r_hist: ndarrays or tuples of ndarrays
@@ -657,8 +657,8 @@ class CorrelationFunction():
         """
         # Convert g(theta, r) into data points, weighted and unweighted
         temp_points = (
-            (hist2point(r_theta_hist[0], self.__bins_theta, self.__bins_r),
-             hist2point(r_theta_hist[1], self.__bins_theta, self.__bins_r)))
+            (hist2point(theta_r_hist[0], self.__bins_theta, self.__bins_r),
+             hist2point(theta_r_hist[1], self.__bins_theta, self.__bins_r)))
         center_r = 0.5*(self.__bins_r[:-1]+self.__bins_r[1:])
 
         # Exclude zeros bins

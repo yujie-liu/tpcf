@@ -21,13 +21,13 @@ def main():
         if i is 0:
             data_data = temp_file["DD"]
             theta_hist = temp_file["ANGULAR_D"]
-            r_theta_hist = temp_file["ANGULAR_R"]
+            theta_r_hist = temp_file["ANGULAR_R"]
             r_hist = temp_file["R_HIST"]
             norm = temp_file["NORM"]
         else:
             data_data += temp_file["DD"]
             theta_hist += temp_file["ANGULAR_D"]
-            r_theta_hist += temp_file["ANGULAR_R"]
+            theta_r_hist += temp_file["ANGULAR_R"]
 
     # Create an instance of two-point correlation function that reads in
     # configuration file
@@ -38,7 +38,7 @@ def main():
 
     # Calculate RR(s) and DR(s), DD(s)
     rand_rand, bins_s = tpcf.rand_rand(theta_hist, r_hist)
-    data_rand, _ = tpcf.data_rand(r_theta_hist, r_hist)
+    data_rand, _ = tpcf.data_rand(theta_r_hist, r_hist)
     # Get error
     err_rand_rand = tpcf.get_error(rand_rand[0], rand_rand[1])
     err_data_rand = tpcf.get_error(data_rand[0], data_rand[1])
