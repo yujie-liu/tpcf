@@ -21,12 +21,15 @@ def main():
     config_fname = sys.argv[3]
     prefix = sys.argv[4]
 
+    # Calculate child-process data
+    print("Job number: {}. Total jobs: {}.".format(no_job, total_jobs))
+    # Save configuration files
+    if no_job is 0:
+        subprocess.call("cp {} {}_config.cfg".format(config_fname, prefix).split())
+
     # Create an instance of two-point correlation function that reads in
     # configuration file
     tpcf = CorrelationFunction(config_fname)
-
-    # Calculate child-process data
-    print("Job number: {}. Total jobs: {}.".format(no_job, total_jobs))
     # Angular distance distribution f(theta)
     theta_hist, _ = tpcf.angular_distance(no_job, total_jobs)
     # Radial angular distribution g(theta, r)
@@ -41,8 +44,6 @@ def main():
         numpy.savez("{}_{:03d}".format(prefix, no_job),
                     ANGULAR_D=theta_hist, ANGULAR_Z=theta_z_hist,
                     Z_HIST=z_hist, NORM=norm)
-        # Save configuration files
-        subprocess.call("cp {} {}_config.cfg".format(config_fname, prefix).split())
     else:
         numpy.savez("{}_{:03d}".format(prefix, no_job),
                     ANGULAR_D=theta_hist, ANGULAR_Z=theta_z_hist)
