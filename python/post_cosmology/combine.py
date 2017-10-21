@@ -35,7 +35,7 @@ def main():
     config_fname = "{}_config.cfg".format(prefix)
     if not os.path.isfile(config_fname):
         raise IOError("Configuration file not found.")
-    tpcf = CorrelationFunction(config_fname, import_catalog=False)
+    tpcf = CorrelationFunction(config_fname, import_catalog=True)
 
     # Create cosmology
     config = configparser.ConfigParser()

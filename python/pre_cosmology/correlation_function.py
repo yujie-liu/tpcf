@@ -1,7 +1,7 @@
 """ Modules to construct two-point correlation function using KD-Tree
 Estimators used: (DD-2*DR+RR)/RR,
 where D and R are data and randoms catalogs respectively """
-__version__ = 1.30
+__version__ = 1.00
 
 import configparser
 import numpy
@@ -547,26 +547,25 @@ class CorrelationFunction():
                                          bins=(self.__bins_dec, self.__bins_ra))
         angular_points = hist2point(*angular_hist)
 
-        # Temporary remove until further runtime analysis is done.
         # Optimizing: Runtime of BallTree modified nearest-neighbors is O(NlogM)
         # where M is the number of points in Tree and N is the number of points
         # for pairings. Thus, the BallTree is created using the size of the
         # smaller catalog, galaxies catalog vs. angular catalog.
-        # if angular_points.shape[0] >= self.data_cat.shape[0]:
-            # job_size = self.data_cat.shape[0]
-            # mode = "data"
-            # arc_tree = BallTree(angular_points[:, :2], leaf_size=leaf,
-                                # metric='haversine')
-        # else:
-            # job_size = angular_points.shape[0]
-            # mode = "angular"
-            # arc_tree = BallTree(self.data_cat[:, :2], leaf_size=leaf,
-                                # metric='haversine')
-        # Temporarily only use angular points to fill Tree
-        job_size = self.data_cat.shape[0]
-        mode = "data"
-        arc_tree = BallTree(angular_points[:, :2], leaf_size=leaf,
-                            metric='haversine')
+        if angular_points.shape[0] >= self.data_cat.shape[0]:
+            job_size = self.data_cat.shape[0]
+            mode = "data"
+            arc_tree = BallTree(angular_points[:, :2], leaf_size=leaf,
+                                metric='haversine')
+        else:
+            job_size = angular_points.shape[0]
+            mode = "angular"
+            arc_tree = BallTree(self.data_cat[:, :2], leaf_size=leaf,
+                                metric='haversine')
+
+        # job_size = self.data_cat.shape[0]
+        # mode = "data"
+        # arc_tree = BallTree(angular_points[:, :2], leaf_size=leaf,
+                            # metric='haversine')
 
         # Calculate start and end index based on job number and total number of
         # jobs.
