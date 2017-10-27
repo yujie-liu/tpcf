@@ -4,7 +4,14 @@ import os
 import sys
 import glob
 import numpy
-from correlation_function import CorrelationFunction
+import correlation_function
+
+
+def get_distance(theta, radius1, radius2):
+    """ Given two points at radius1 and radius2 with angular separation
+    theta (in rad), calulate distance between points"""
+    return numpy.sqrt(radius1**2+radius2**2-2*radius1*radius2*numpy.cos(theta))
+
 
 def main():
     """ Main """
@@ -23,6 +30,9 @@ def main():
             theta_hist = temp_file["ANGULAR_D"]
             theta_r_hist = temp_file["ANGULAR_R"]
             r_hist = temp_file["R_HIST"]
+            bins_theta_r = temp_file["BINS_THETA_R"]
+            bins_theta = temp_file["BINS_THETA"]
+            bins_r = temp_file["BINS_R"]
             norm = temp_file["NORM"]
         else:
             data_data += temp_file["DD"]
@@ -32,13 +42,14 @@ def main():
     # Create an instance of two-point correlation function that reads in
     # configuration file
     config_fname = "{}_config.cfg".format(prefix)
-    if not os.path.isfile(config_fname):
-        raise IOError("Configuration file not found.")
-    tpcf = CorrelationFunction(config_fname, import_catalog=True)
+    tpcf = correlation_function.CorrelationFunction(config_fname,
+                                                    import_catalog=False)
 
     # Calculate RR(s) and DR(s), DD(s)
-    rand_rand, bins_s = tpcf.rand_rand(theta_hist, r_hist)
-    data_rand, _ = tpcf.data_rand(theta_r_hist, r_hist)
+    tpcf.r_hist = [r_hist, bins_r]
+    rand_rand, bins_s = tpcf.rand_rand(theta_hist)
+    data_rand, _ = tpcf.data_rand(theta_r_hist)
+
     # Get error
     err_rand_rand = tpcf.get_error(rand_rand[0], rand_rand[1])
     err_data_rand = tpcf.get_error(data_rand[0], data_rand[1])

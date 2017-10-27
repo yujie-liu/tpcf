@@ -25,28 +25,28 @@ class TestCorrelationFunction(unittest2.TestCase):
 
         # Commutative
         print("- Commutative test ")
-        self.assertAlmostEqual(funct(3., 5., 1.3), 5.09657091987)
-        self.assertAlmostEqual(funct(5., 3., 1.3), 5.09657091987)
+        self.assertAlmostEqual(funct(1.3, 3., 5.), 5.09657091987)
+        self.assertAlmostEqual(funct(1.3, 5., 3.), 5.09657091987)
 
         # Rotate by 360 deg (or 2pi rad)
         print("- Rotation 360 degree test")
-        self.assertAlmostEqual(funct(3., 5., 1.3+2*PI),
+        self.assertAlmostEqual(funct(1.3+2*PI, 3., 5.),
                                5.09657091987)
 
         # Negative radius (Rotate by 180 deg)
         print("- Rotation 180 degreee test (negative radius)")
-        self.assertAlmostEqual(funct(3., 5., 1.3+PI), 6.48266649294)
-        self.assertAlmostEqual(funct(-3., 5., 1.3), 6.48266649294)
-        self.assertAlmostEqual(funct(3., -5., 1.3), 6.48266649294)
+        self.assertAlmostEqual(funct(1.3+PI, 3., 5.), 6.48266649294)
+        self.assertAlmostEqual(funct(1.3, -3., 5.), 6.48266649294)
+        self.assertAlmostEqual(funct(1.3, 3., -5.), 6.48266649294)
 
         # Distance to origin
         print("- Distance to origin test")
-        self.assertEqual(funct(3., 0., 0.8), 3.)
-        self.assertEqual(funct(0., 5., 0.8), 5.)
+        self.assertEqual(funct(0.8, 3., 0.), 3.)
+        self.assertEqual(funct(0.8, 0., 5.), 5.)
 
         # Same points
         print("- Same points test")
-        self.assertAlmostEqual(funct(3., 3., 0.), 0.)
+        self.assertAlmostEqual(funct(0., 3., 3.), 0.)
 
     def test_get_bins(self):
         """ Test function correlation_function.get_binnings(min, max, width) """
@@ -132,7 +132,7 @@ class TestCorrelationFunction(unittest2.TestCase):
 
     def test_correlation_class(self):
         """ Test correlation_function.CorrelationFunction class """
-        print("\nTest CorrelationFunction")
+        print("\nTest CorrelationFunction and Convolution function")
 
         test = numpy.load("test/tpcf_test.npz")
         tpcf = correlation_function.CorrelationFunction("test/test_config.cfg")
@@ -145,7 +145,7 @@ class TestCorrelationFunction(unittest2.TestCase):
 
         # Test comoving distribution P(r)
         print(" - Comoving distribution test ")
-        r_hist, bins_r = tpcf.comoving_distribution()
+        r_hist, bins_r = tpcf.r_hist
         numpy.testing.assert_almost_equal(r_hist, test["R_HIST"])
         numpy.testing.assert_almost_equal(bins_r, test["BINS_PR"])
 
@@ -163,14 +163,15 @@ class TestCorrelationFunction(unittest2.TestCase):
         numpy.testing.assert_almost_equal(bins_r, test["BINS_GR"])
 
         # Test random-random distribution RR(s)
+        print(" - Probability convolution function test ")
         print(" - Random-random distribution RR(s) test")
-        rand_rand, bins_s = tpcf.rand_rand(theta_hist, r_hist)
+        rand_rand, bins_s = tpcf.rand_rand(theta_hist)
         numpy.testing.assert_almost_equal(rand_rand, test["RR"])
         numpy.testing.assert_almost_equal(bins_s, test["BINS_RR"])
 
         # Test data-random distribution DR(s)
         print(" - Data-random distribution DR(s) test")
-        data_rand, bins_s = tpcf.data_rand(theta_r_hist, r_hist)
+        data_rand, bins_s = tpcf.data_rand(theta_r_hist)
         numpy.testing.assert_almost_equal(data_rand, test["DR"])
         numpy.testing.assert_almost_equal(bins_s, test["BINS_DR"])
 

@@ -32,21 +32,22 @@ def main():
     tpcf = CorrelationFunction(config_fname)
 
     # Angular distance distribution f(theta)
-    theta_hist, _ = tpcf.angular_distance(no_job, total_jobs)
+    theta_hist, bins_theta = tpcf.angular_distance(no_job, total_jobs)
     # Radial angular distribution g(theta, r)
-    theta_r_hist, _, _ = tpcf.angular_comoving(no_job, total_jobs)
+    theta_r_hist, _, bins_theta_r = tpcf.angular_comoving(no_job, total_jobs)
     # Galaxies separation distribution DD(s)
     data_data, _ = tpcf.pairs_separation(no_job, total_jobs, out="DD")
 
     # Save with prefix
     if no_job is 0:
         # Save comoving distribution P(r) and normalization constant
-        r_hist, _ = tpcf.comoving_distribution()
+        r_hist, bins_r = tpcf.r_hist
         norm = numpy.array([tpcf.normalization(weighted=True),
                             tpcf.normalization(weighted=False)])
         numpy.savez("{}_{:03d}".format(prefix, no_job),
                     DD=data_data, ANGULAR_D=theta_hist, ANGULAR_R=theta_r_hist,
-                    R_HIST=r_hist, NORM=norm)
+                    R_HIST=r_hist, BINS_THETA=bins_theta,
+                    BINS_THETA_R=bins_theta_r, BINS_R=bins_r, NORM=norm)
     else:
         numpy.savez("{}_{:03d}".format(prefix, no_job),
                     DD=data_data, ANGULAR_D=theta_hist, ANGULAR_R=theta_r_hist)
