@@ -1,7 +1,6 @@
 """ Script for submitting jobs to calculate DD(s), DR(s), and RR(s) """
 
 import sys
-import subprocess
 import numpy
 from correlation_function import CorrelationFunction
 
@@ -23,9 +22,6 @@ def main():
 
     # Calculate child-process data
     print("Job number: {}. Total jobs: {}.".format(no_job, total_jobs))
-    # Save configuration files
-    if no_job is 0:
-        subprocess.call("cp {} {}_config.cfg".format(config_fname, prefix).split())
 
     # Create an instance of two-point correlation function that reads in
     # configuration file
@@ -36,18 +32,18 @@ def main():
     # Radial angular distribution g(theta, r)
     theta_r_hist, _, bins_theta_r = tpcf.angular_comoving(no_job, total_jobs)
     # Galaxies separation distribution DD(s)
-    data_data, _ = tpcf.pairs_separation(no_job, total_jobs, out="DD")
+    data_data, bins_s = tpcf.pairs_separation(no_job, total_jobs, out="DD")
 
-    # Save with prefix
+    # Save with prefix-
     if no_job is 0:
         # Save comoving distribution P(r) and normalization constant
-        r_hist, bins_r = tpcf.r_hist
+        r_hist, bins_r = tpcf.comoving_distribution()
         norm = numpy.array([tpcf.normalization(weighted=True),
                             tpcf.normalization(weighted=False)])
         numpy.savez("{}_{:03d}".format(prefix, no_job),
                     DD=data_data, ANGULAR_D=theta_hist, ANGULAR_R=theta_r_hist,
-                    R_HIST=r_hist, BINS_THETA=bins_theta,
-                    BINS_THETA_R=bins_theta_r, BINS_R=bins_r, NORM=norm)
+                    R_HIST=r_hist, BINS_THETA=bins_theta, BINS_R=bins_r,
+                    BINS_THETA_R=bins_theta_r, BINS_S=bins_s, NORM=norm)
     else:
         numpy.savez("{}_{:03d}".format(prefix, no_job),
                     DD=data_data, ANGULAR_D=theta_hist, ANGULAR_R=theta_r_hist)

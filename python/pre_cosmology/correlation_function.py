@@ -266,6 +266,59 @@ def prob_convolution2d(map_xy, map_z, bins_x, bins_y, bins_z, dist, bins_s):
     return pairs_separation
 
 
+def correlation(rand_rand, data_rand, data_data, bins):
+    """ Construct two-point correlation function.
+    Inputs:
+    + rand_rand: array
+        Values of separation distribution between pairs of random galaxies
+        RR(s).
+    + data_rand: array
+        Values of separation distribution between pairs of a random point
+        and a galaxy DR(s).
+    + data_data: array
+        Valus of separation distribution between pairs of galaxies DD(s).
+    Note: rand_rand, data_rand, data_data must have the same size.
+    + bins: array
+        Binedges of rand_rand, data_rand, data_data.
+    Output:
+    + correlation_function: array
+        Two-point correlation function computed using equations:
+        f = [DD(s)-2*DR(s)+RR(s)]/RR(s)
+        If RR(s) = 0, then f = 0
+    + correlation_function_ss: array
+        Two-point correlation function multiplied by s^2: f(s)s^2
+        """
+    correlation_function = data_data-2*data_rand+rand_rand
+    correlation_function = numpy.divide(correlation_function, rand_rand,
+                                        out=numpy.zeros_like(rand_rand),
+                                        where=rand_rand != 0)
+    center_s = 0.5*(bins[:-1]+bins[1:])
+    correlation_function_ss = correlation_function*center_s**2
+    return correlation_function, correlation_function_ss
+
+
+def get_error(hist_w, hist_u):
+    """ Get the bin error of weighted and unweighted pairs separation
+    histogram. Bin error in unweighted pairs separation is assumed to be
+    Poisson. Bin error in weighted pairs separation is given by equation
+    error_w = n_w/sqrt(n_u).
+    Inputs:
+    + hist_w: array
+        Values of weighted histogram.
+    + hist_u: array
+        Values of unweighted histogram.
+    Outputs:
+    + error: ndarray or tuples of ndarray
+        The bun error in the weighted and unweighted histograms respectively.
+    """
+    error_u = numpy.sqrt(hist_u)
+    error_w = numpy.divide(hist_w, numpy.sqrt(hist_u),
+                           out=numpy.zeros_like(hist_w),
+                           where=hist_u != 0)
+    error = numpy.array([error_w, error_u]).T
+    return error
+
+
 class CorrelationFunction():
     """ Class to construct two-point correlation function """
     def __init__(self, config_fname, import_catalog=True):
@@ -278,11 +331,11 @@ class CorrelationFunction():
         self.rand_cat = None
         self.r_hist = None
         self.angular_hist = None
-        self.__bins_s = None
-        self.__bins_theta = None
-        self.n_rand = None
-        self.w_sum_rand = None
-        self.w2_sum_rand = None
+        self.bins_s = None
+        self.bins_theta = None
+        self.__n_rand = None
+        self.__w_sum_rand = None
+        self.__w2_sum_rand = None
         self.set_configuration(config_fname, import_catalog)
 
     def __angular_distance_thread(self, angular_points, arc_tree, start, end):
@@ -304,8 +357,8 @@ class CorrelationFunction():
             Return values of f(theta).
         """
         # Define angular distance distribution f(theta) as histogram
-        nbins_theta = self.__bins_theta.size-1
-        theta_max = self.__bins_theta.max()
+        nbins_theta = self.bins_theta.size-1
+        theta_max = self.bins_theta.max()
         theta_hist = numpy.zeros(nbins_theta)
 
         print("Construct f(theta) from index {} to {}".format(start, end-1))
@@ -351,9 +404,9 @@ class CorrelationFunction():
         """
         # Define angular-radial distribution g(theta, r) as weighted and
         # unweighted 2-d histogram respectively
-        nbins_theta = self.__bins_theta.size-1
+        nbins_theta = self.bins_theta.size-1
         nbins_r = self.r_hist[1].size-1
-        theta_max = self.__bins_theta.max()
+        theta_max = self.bins_theta.max()
         bins_range = ((0., theta_max),
                       (self.r_hist[1].min(), self.r_hist[1].max()))
         theta_r_hist = numpy.zeros((2, nbins_theta, nbins_r))
@@ -427,8 +480,8 @@ class CorrelationFunction():
         """
         # Define weighted and unweighted DD(s) as two one-dimensional
         # histograms respectively.
-        nbins_s = self.__bins_s.size-1
-        s_max = self.__bins_s.max()
+        nbins_s = self.bins_s.size-1
+        s_max = self.bins_s.max()
         pairs_separation = numpy.zeros((2, nbins_s))
 
         print("Calculate DD(s) from index {} to {}".format(start, end-1))
@@ -481,7 +534,7 @@ class CorrelationFunction():
         # spatial separation (Mpc/h)
         s_max = float(region["s_max"])
         binwidth_s = float(binnings['binwidth_s'])
-        self.__bins_s, binwidth_s = get_bins(0., s_max, binwidth_s)
+        self.bins_s, binwidth_s = get_bins(0., s_max, binwidth_s)
 
         # comoving distance distribution(Mpc/h)
         r_min = cosmo.z2r(float(region["z_min"]))
@@ -497,7 +550,7 @@ class CorrelationFunction():
             binwidth_theta = 1.*binwidth_r/r_max
         else:
             binwidth_theta = DEG2RAD*float(binnings['binwidth_theta'])
-        self.__bins_theta, binwidth_theta = get_bins(0., theta_max,
+        self.bins_theta, binwidth_theta = get_bins(0., theta_max,
                                                      binwidth_theta)
 
         # Import random and data catalogs
@@ -543,16 +596,16 @@ class CorrelationFunction():
                                                       self.rand_cat[:, 1],
                                                       bins=(bins_dec, bins_ra))
             except KeyError:
-                with numpy.load(config['HIST']['random_distribution']) as temp_file:
+                with numpy.load(config["HISTS"]["random_distribution"]) as temp_file:
                     print("Importing distribution from {}:".format(temp_file))
                     r_hist = temp_file['R_HIST']
                     bins_r = temp_file['BINS_R']
                     angular_hist = temp_file['ANGULAR_HIST']
                     bins_dec = temp_file['BINS_DEC']
                     bins_ra = temp_file['BINS_RA']
-                    self.n_rand = temp_file['N_DATA']
-                    self.w_sum_rand = temp_file['W_SUM']
-                    self.w2_sum_rand = temp_file['W2_SUM']
+                    self.__n_rand = temp_file['N_DATA']
+                    self.__w_sum_rand = temp_file['W_SUM']
+                    self.__w2_sum_rand = temp_file['W2_SUM']
                 self.r_hist = [r_hist, bins_r]
                 self.angular_hist = [angular_hist, bins_dec, bins_ra]
 
@@ -567,6 +620,14 @@ class CorrelationFunction():
         print("Angular separation (rad):")
         print("-[Min, Max, Binwidth] = [{}, {}, {}]".format(0., theta_max,
                                                             binwidth_theta))
+
+    def comoving_distribution(self):
+        """ Return the comoving distance distribution and binedges """
+        return self.r_hist
+
+    def angular_distribution(self):
+        """ Return angular distribution with binedges of RA and DEC """
+        return self.angular_hist
 
     def angular_distance(self, no_job, total_jobs, leaf=40):
         """ Calculate the angular distance distribution f(theta) as an
@@ -608,7 +669,7 @@ class CorrelationFunction():
         theta_hist = self.__angular_distance_thread(angular_points, arc_tree,
                                                     *job_range)
 
-        return theta_hist, self.__bins_theta
+        return theta_hist, self.bins_theta
 
     def angular_comoving(self, no_job, total_jobs, leaf=40):
         """ Calculate g(theta, r), angular distance vs. comoving distribution,
@@ -672,14 +733,14 @@ class CorrelationFunction():
                                                       job_range[0],
                                                       job_range[1], mode)
 
-        return theta_r_hist, self.__bins_theta, self.r_hist[1]
+        return theta_r_hist, self.bins_theta, self.r_hist[1]
 
     def rand_rand(self, theta_hist):
         """ Calculate separation distribution RR(s) between pairs of randoms.
         Inputs:
         + theta_hist: list, array-like
             Values of angular distance distribution f(theta). Must have
-            length of self.__bins_theta-1
+            length of self.bins_theta-1
         Outputs:
         + rand_rand: ndarrays or tuples of ndarrays
             Return values of weighted and unweighted RR(s) respectively.
@@ -688,21 +749,21 @@ class CorrelationFunction():
         """
         if self.r_hist is None:
             raise TypeError("Comoving distribution is not imported")
-        if len(theta_hist) != self.__bins_theta.size-1:
+        if len(theta_hist) != self.bins_theta.size-1:
             print(len(theta_hist))
             raise ValueError("f(theta) must have the length of {}".format(
-                self.__bins_theta.size-1))
+                self.bins_theta.size-1))
 
         r_hist, bins_r = self.r_hist
         print("Construct RR(s)")
-        rand_rand = numpy.zeros((2, self.__bins_s.size-1))
+        rand_rand = numpy.zeros((2, self.bins_s.size-1))
         rand_rand[0] += prob_convolution(theta_hist, r_hist[0], r_hist[0],
-                                         self.__bins_theta, bins_r, bins_r,
-                                         get_distance, self.__bins_s)
+                                         self.bins_theta, bins_r, bins_r,
+                                         get_distance, self.bins_s)
         rand_rand[1] += prob_convolution(theta_hist, r_hist[1], r_hist[1],
-                                         self.__bins_theta, bins_r, bins_r,
-                                         get_distance, self.__bins_s)
-        return rand_rand, self.__bins_s
+                                         self.bins_theta, bins_r, bins_r,
+                                         get_distance, self.bins_s)
+        return rand_rand, self.bins_s
 
     def data_rand(self, theta_r_hist):
         """ Calculate separation distribution DR(s) between pairs of a random
@@ -718,23 +779,23 @@ class CorrelationFunction():
         """
         if self.r_hist is None:
             raise TypeError("Comoving distribution is not imported")
-        if theta_r_hist.shape != (2, self.__bins_theta.size-1,
+        if theta_r_hist.shape != (2, self.bins_theta.size-1,
                                   self.r_hist[1].size-1):
             print(theta_r_hist.shape)
             raise ValueError(
                 ("g(theta, r) must have the dimension of (2, {}, {})").format(
-                    self.__bins_theta.size-1, self.r_hist[1].size-1))
+                    self.bins_theta.size-1, self.r_hist[1].size-1))
 
         r_hist, bins_r = self.r_hist
         print("Construct DR(s)")
-        data_rand = numpy.zeros((2, self.__bins_s.size-1))
+        data_rand = numpy.zeros((2, self.bins_s.size-1))
         data_rand[0] += prob_convolution2d(theta_r_hist[0], r_hist[0],
-                                           self.__bins_theta, bins_r, bins_r,
-                                           get_distance, self.__bins_s)
+                                           self.bins_theta, bins_r, bins_r,
+                                           get_distance, self.bins_s)
         data_rand[1] += prob_convolution2d(theta_r_hist[1], r_hist[1],
-                                           self.__bins_theta, bins_r, bins_r,
-                                           get_distance, self.__bins_s)
-        return data_rand, self.__bins_s
+                                           self.bins_theta, bins_r, bins_r,
+                                           get_distance, self.bins_s)
+        return data_rand, self.bins_s
 
     def pairs_separation(self, no_job, total_jobs, out="DD", leaf=40):
         """ Calculate separation distribution between pairs of galaxies.
@@ -811,37 +872,7 @@ class CorrelationFunction():
                                                           cart_tree_cat, tree,
                                                           *job_range)
 
-        return pairs_separation, self.__bins_s
-
-    def correlation(self, rand_rand, data_rand, data_data, bins):
-        """ Construct two-point correlation function.
-        Inputs:
-        + rand_rand: array
-            Values of separation distribution between pairs of random galaxies
-            RR(s).
-        + data_rand: array
-            Values of separation distribution between pairs of a random point
-            and a galaxy DR(s).
-        + data_data: array
-            Valus of separation distribution between pairs of galaxies DD(s).
-        Note: rand_rand, data_rand, data_data must have the same size.
-        + bins: array
-            Binedges of rand_rand, data_rand, data_data.
-        Output:
-        + correlation_function: array
-            Two-point correlation function computed using equations:
-            f = [DD(s)-2*DR(s)+RR(s)]/RR(s)
-            If RR(s) = 0, then f = 0
-        + correlation_function_ss: array
-            Two-point correlation function multiplied by s^2: f(s)s^2
-            """
-        correlation_function = data_data-2*data_rand+rand_rand
-        correlation_function = numpy.divide(correlation_function, rand_rand,
-                                            out=numpy.zeros_like(rand_rand),
-                                            where=rand_rand != 0)
-        center_s = 0.5*(bins[:-1]+bins[1:])
-        correlation_function_ss = correlation_function*center_s**2
-        return correlation_function, correlation_function_ss
+        return pairs_separation, self.bins_s
 
     # Compute normalization constant
     def normalization(self, weighted=True):
@@ -878,8 +909,8 @@ class CorrelationFunction():
         if weighted:
             # Calculate weighted normalization constant
             if self.rand_cat is None:
-                w_sum_rand = self.w_sum_rand
-                w2_sum_rand = self.w2_sum_rand
+                w_sum_rand = self.__w_sum_rand
+                w2_sum_rand = self.__w2_sum_rand
             else:
                 w_sum_rand = numpy.sum(self.rand_cat[:, 3])
                 w2_sum_rand = numpy.sum(self.rand_cat[:, 3]**2)
@@ -894,7 +925,7 @@ class CorrelationFunction():
 
         # Calculate unweighted normalization constant
         if self.rand_cat is None:
-            n_rand = self.n_rand
+            n_rand = self.__n_rand
         else:
             n_rand = self.rand_cat.shape[0]
         n_data = self.data_cat.shape[0]
@@ -904,24 +935,3 @@ class CorrelationFunction():
         norm_dr = n_data*n_rand
 
         return norm_rr, norm_dr, norm_dd
-
-    def get_error(self, hist_w, hist_u):
-        """ Get the bin error of weighted and unweighted pairs separation
-        histogram. Bin error in unweighted pairs separation is assumed to be
-        Poisson. Bin error in weighted pairs separation is given by equation
-        error_w = n_w/sqrt(n_u).
-        Inputs:
-        + hist_w: array
-            Values of weighted histogram.
-        + hist_u: array
-            Values of unweighted histogram.
-        Outputs:
-        + error: ndarray or tuples of ndarray
-            The bun error in the weighted and unweighted histograms respectively.
-        """
-        error_u = numpy.sqrt(hist_u)
-        error_w = numpy.divide(hist_w, numpy.sqrt(hist_u),
-                               out=numpy.zeros_like(hist_w),
-                               where=hist_u != 0)
-        error = numpy.array([error_w, error_u]).T
-        return error

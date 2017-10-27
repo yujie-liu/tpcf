@@ -1,16 +1,9 @@
 """ Script for combining job results and calculate DD(s), DR(s), and RR(s) """
 
-import os
 import sys
 import glob
 import numpy
 import correlation_function
-
-
-def get_distance(theta, radius1, radius2):
-    """ Given two points at radius1 and radius2 with angular separation
-    theta (in rad), calulate distance between points"""
-    return numpy.sqrt(radius1**2+radius2**2-2*radius1*radius2*numpy.cos(theta))
 
 
 def main():
@@ -33,27 +26,37 @@ def main():
             bins_theta_r = temp_file["BINS_THETA_R"]
             bins_theta = temp_file["BINS_THETA"]
             bins_r = temp_file["BINS_R"]
+            bins_s = temp_file["BINS_S"]
             norm = temp_file["NORM"]
         else:
             data_data += temp_file["DD"]
             theta_hist += temp_file["ANGULAR_D"]
             theta_r_hist += temp_file["ANGULAR_R"]
 
-    # Create an instance of two-point correlation function that reads in
-    # configuration file
-    config_fname = "{}_config.cfg".format(prefix)
-    tpcf = correlation_function.CorrelationFunction(config_fname,
-                                                    import_catalog=False)
-
     # Calculate RR(s) and DR(s), DD(s)
-    tpcf.r_hist = [r_hist, bins_r]
-    rand_rand, bins_s = tpcf.rand_rand(theta_hist)
-    data_rand, _ = tpcf.data_rand(theta_r_hist)
+    print("Construct RR(s)")
+    rand_rand = numpy.zeros((2, bins_s.size-1))
+    rand_rand[0] += correlation_function.prob_convolution(
+        theta_hist, r_hist[0], r_hist[0], bins_theta, bins_r, bins_r,
+        correlation_function.get_distance, bins_s)
+    rand_rand[1] += correlation_function.prob_convolution(
+        theta_hist, r_hist[1], r_hist[1], bins_theta, bins_r, bins_r,
+        correlation_function.get_distance, bins_s)
+
+    print("Construct DR(s)")
+    data_rand = numpy.zeros((2, bins_s.size-1))
+    data_rand[0] += correlation_function.prob_convolution2d(
+        theta_r_hist[0], r_hist[0], bins_theta, bins_theta_r, bins_r,
+        correlation_function.get_distance, bins_s)
+    data_rand[1] += correlation_function.prob_convolution2d(
+        theta_r_hist[1], r_hist[1], bins_theta, bins_theta_r, bins_r,
+        correlation_function.get_distance, bins_s)
 
     # Get error
-    err_rand_rand = tpcf.get_error(rand_rand[0], rand_rand[1])
-    err_data_rand = tpcf.get_error(data_rand[0], data_rand[1])
-    err_data_data = tpcf.get_error(data_data[0], data_data[0])
+    err_rand_rand = correlation_function.get_error(rand_rand[0], rand_rand[1])
+    err_data_rand = correlation_function.get_error(data_rand[0], data_rand[1])
+    err_data_data = correlation_function.get_error(data_data[0], data_data[1])
+
     # Normalize
     for i in range(2):
         rand_rand[i] = rand_rand[i]/norm[i][0]
@@ -65,10 +68,10 @@ def main():
 
     # Construct two-point correlation function, both weighted and unweighted
     correlation = numpy.zeros((2, 2, bins_s.size-1))
-    correlation[0] = tpcf.correlation(rand_rand[0], data_rand[0], data_data[0],
-                                      bins_s)
-    correlation[1] = tpcf.correlation(rand_rand[1], data_rand[1], data_data[1],
-                                      bins_s)
+    correlation[0] = correlation_function.correlation(
+        rand_rand[0], data_rand[0], data_data[0], bins_s)
+    correlation[1] = correlation_function.correlation(
+        rand_rand[1], data_rand[1], data_data[1], bins_s)
 
     # Save results
     numpy.savez("{}_final".format(prefix),

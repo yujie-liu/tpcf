@@ -15,9 +15,8 @@ def main():
     """ Calculating angular distribution and comoving distribution of a catalog
     Arguments:
       + config filename: path to catalog
-      + output filename: name of .npz output file (with or without .npz) """
+      """
     config_fname = sys.argv[1]
-    output_fname = sys.argv[2]
 
     config = configparser.ConfigParser()
     config.read(config_fname)
@@ -88,7 +87,8 @@ def main():
     w2_sum = numpy.sum(catalog[:, 3]**2)
 
     # Save results
-    numpy.savez(output_fname, R_HIST=r_hist, ANGULAR_HIST=angular_hist,
+    numpy.savez(config['PREPROCESS']["output_filename"],
+                R_HIST=r_hist, ANGULAR_HIST=angular_hist,
                 BINS_R=bins_r, BINS_DEC=bins_dec, BINS_RA=bins_ra,
                 N_DATA=catalog.shape[0], W_SUM=w_sum, W2_SUM=w2_sum)
 
