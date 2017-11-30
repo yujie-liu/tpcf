@@ -319,6 +319,14 @@ def get_error(hist_w, hist_u):
     return error
 
 
+def get_correlation_error(correlation_function):
+    """ Get the bin error of the two-point correlation (DD-2DR+RR)/RR by using
+    error propagation with equation:
+    Err_tpcf = Sqrt[(Err_DD^2+Err_DR^2+(DD-DR)^2)*Err_RR^2/RR^2]
+    """
+    pass
+
+
 class CorrelationFunction():
     """ Class to construct two-point correlation function """
     def __init__(self, config_fname, import_catalog=True):
@@ -475,7 +483,7 @@ class CorrelationFunction():
         + end: int
             Ending index of galaxies in galaxies catalog: index_end = end-1.
         Outputs:
-        + pairs_seprtion: ndarrays or tuples of ndarrays
+        + pairs_separation: ndarrays or tuples of ndarrays
             Return values of weighted and unweighted DD(s) respectively.
         """
         # Define weighted and unweighted DD(s) as two one-dimensional
@@ -514,7 +522,7 @@ class CorrelationFunction():
     def set_configuration(self, config_fname, import_catalog=True):
         """ Sets up binning variable based on input configuration file.
             If import_catalog is True, will import catalog data."""
-        config = configparser.ConfigParser()
+        config = configparser.SafeConfigParser(os.environ)
         config.read(config_fname)
         binnings = config['BINNING']
         region = config['REGION']
@@ -540,7 +548,7 @@ class CorrelationFunction():
         r_min = cosmo.z2r(float(region["z_min"]))
         r_max = cosmo.z2r(float(region["z_max"]))
         if binnings['binwidth_r'] == 'auto':
-            binwidth_r = binwidth_s/2.
+            binwidth_r = binwidth_s/4.
         else:
             binwidth_r = float(binnings['binwidth_r'])
         bins_r, binwidth_r = get_bins(r_min, r_max, binwidth_r)
@@ -551,7 +559,7 @@ class CorrelationFunction():
         else:
             binwidth_theta = DEG2RAD*float(binnings['binwidth_theta'])
         self.bins_theta, binwidth_theta = get_bins(0., theta_max,
-                                                     binwidth_theta)
+                                                   binwidth_theta)
 
         # Import random and data catalogs
         if import_catalog:

@@ -1,6 +1,7 @@
 """ Script for calculating angular distribution and comoving distribution of
 a catalog """
 
+import os
 import sys
 import configparser
 import numpy
@@ -18,7 +19,7 @@ def main():
       """
     config_fname = sys.argv[1]
 
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(os.environ)
     config.read(config_fname)
     binnings = config['BINNING']
     region = config['REGION']
@@ -46,7 +47,7 @@ def main():
     r_min = cosmo.z2r(float(region["z_min"]))
     r_max = cosmo.z2r(float(region["z_max"]))
     if binnings['binwidth_r'] == 'auto':
-        binwidth_r = binwidth_s/2.
+        binwidth_r = binwidth_s/4.
     else:
         binwidth_r = float(binnings['binwidth_r'])
     bins_r, binwidth_r = get_bins(r_min, r_max, binwidth_r)
@@ -68,6 +69,8 @@ def main():
     else:
         binwidth_ra = DEG2RAD*float(binnings['binwidth_ra'])
     bins_ra, binwidth_ra = get_bins(ra_min, ra_max, binwidth_ra)
+
+    print(binwidth_ra, binwidth_dec, binwidth_r);
 
     # Calculate P(r) and R(ra, dec)
     # Calculate weighted and unweighted radial distribution P(r) as
