@@ -6,7 +6,7 @@ import sys
 import configparser
 import numpy
 from cosmology import Cosmology
-from correlation_function import import_fits, get_bins
+from correlation_function import import_fits, get_bins, hist2point
 
 DEG2RAD = numpy.pi/180.
 RAD2DEG = 180./numpy.pi
@@ -38,7 +38,7 @@ def main():
     # Import catalog
     catalog = import_fits('random_filename', config['PREPROCESS'], region, cosmo)
 
-    # Setting up some bin variables
+    # Setting up bin variables
     s_max = float(region["s_max"])
     binwidth_s = float(binnings['binwidth_s'])
     _, binwidth_s = get_bins(0., s_max, binwidth_s)
@@ -59,8 +59,7 @@ def main():
         binwidth_dec = 1.*binwidth_r/r_max
     else:
         binwidth_dec = DEG2RAD*float(binnings['binwidth_dec'])
-    bins_dec, binwidth_dec = get_bins(dec_min, dec_max,
-                                      binwidth_dec)
+    bins_dec, binwidth_dec = get_bins(dec_min, dec_max, binwidth_dec)
 
     ra_min = DEG2RAD*float(region["ra_min"])
     ra_max = DEG2RAD*float(region["ra_max"])
@@ -70,7 +69,8 @@ def main():
         binwidth_ra = DEG2RAD*float(binnings['binwidth_ra'])
     bins_ra, binwidth_ra = get_bins(ra_min, ra_max, binwidth_ra)
 
-    print(binwidth_ra, binwidth_dec, binwidth_r);
+    print("Binwidth [RA, DEC, R] in unit [rad, rad, Mpc/h]:")
+    print("{0:.4f}, {1:.4f}, {2:.4f}".format(binwidth_ra, binwidth_dec, binwidth_r))
 
     # Calculate P(r) and R(ra, dec)
     # Calculate weighted and unweighted radial distribution P(r) as
@@ -81,9 +81,11 @@ def main():
     r_hist[1] += numpy.histogram(catalog[:, 2], bins=bins_r)[0]
     r_hist = 1.*r_hist/catalog.shape[0]
 
-    # Calculate the angular distribution R(ra, dec)
-    angular_hist, _, _ = numpy.histogram2d(catalog[:, 0], catalog[:, 1],
-                                           bins=(bins_dec, bins_ra))
+    # Calculate the angular distribution R(ra, dec) and breaks into
+    # data points with proper weights
+    angular_hist = numpy.histogram2d(catalog[:, 0], catalog[:, 1],
+                                     bins=(bins_dec, bins_ra))
+    angular_points = hist2point(*angular_hist)
 
     # Calculate the component for normalization constant
     w_sum = numpy.sum(catalog[:, 3])
@@ -91,7 +93,7 @@ def main():
 
     # Save results
     numpy.savez(config['PREPROCESS']["output_filename"],
-                R_HIST=r_hist, ANGULAR_HIST=angular_hist,
+                R_HIST=r_hist, ANGULAR_POINTS=angular_points,
                 BINS_R=bins_r, BINS_DEC=bins_dec, BINS_RA=bins_ra,
                 N_DATA=catalog.shape[0], W_SUM=w_sum, W2_SUM=w2_sum)
 

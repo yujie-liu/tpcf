@@ -319,12 +319,11 @@ def get_error(hist_w, hist_u):
     return error
 
 
-def get_correlation_error(correlation_function):
-    """ Get the bin error of the two-point correlation (DD-2DR+RR)/RR by using
-    error propagation with equation:
-    Err_tpcf = Sqrt[(Err_DD^2+Err_DR^2+(DD-DR)^2)*Err_RR^2/RR^2]
-    """
-    pass
+# def get_correlation_error(correlation_function):
+    # Get the bin error of the two-point correlation (DD-2DR+RR)/RR by using
+    # error propagation with equation:
+    # Err_tpcf = Sqrt[(Err_DD^2+Err_DR^2+(DD-DR)^2)*Err_RR^2/RR^2]
+    # pass
 
 
 class CorrelationFunction():
@@ -338,7 +337,7 @@ class CorrelationFunction():
         self.data_cat = None
         self.rand_cat = None
         self.r_hist = None
-        self.angular_hist = None
+        self.angular_points = None
         self.bins_s = None
         self.bins_theta = None
         self.__n_rand = None
@@ -346,13 +345,10 @@ class CorrelationFunction():
         self.__w2_sum_rand = None
         self.set_configuration(config_fname, import_catalog)
 
-    def __angular_distance_thread(self, angular_points, arc_tree, start, end):
+    def __angular_distance_thread(self, arc_tree, start, end):
         """ Thread function to calculate angular distance distribution f(theta)
         as one-dimensional histogram.
         Inputs:
-        + angular_points: ndarray
-            Angular distribution R(ra, dec) breaks into data points with
-            proper weights. Format of each row must be [DEC, RA, WEIGHT].
         + arc_tree: ball tree
             Ball tree fill with data in angular catalog. For more details,
             refer to sklearn.neighbors.BallTree
@@ -370,13 +366,13 @@ class CorrelationFunction():
         theta_hist = numpy.zeros(nbins_theta)
 
         print("Construct f(theta) from index {} to {}".format(start, end-1))
-        for i, point in enumerate(angular_points[start:end]):
+        for i, point in enumerate(self.angular_points[start:end]):
             if i % 10000 is 0:
                 print(i)
             index, theta = arc_tree.query_radius(point[:2].reshape(1, -1),
                                                  r=theta_max,
                                                  return_distance=True)
-            temp_weight = point[2]*angular_points[:, 2][index[0]]
+            temp_weight = point[2]*self.angular_points[:, 2][index[0]]
             temp_hist, _ = numpy.histogram(theta[0], bins=nbins_theta,
                                            range=(0., theta_max),
                                            weights=temp_weight)
@@ -387,14 +383,10 @@ class CorrelationFunction():
 
         return theta_hist
 
-    def __angular_comoving_thread(self, angular_points, arc_tree,
-                                  start, end, mode):
+    def __angular_comoving_thread(self, arc_tree, start, end, mode):
         """ Thread function for calculating angular comoving distribution
         g(theta, r) as two-dimensional histogram.
         Inputs:
-        + angular_points: ndarray
-            Angular distribution R(ra, dec) breaks into data points with
-            proper weights. Format of each row must be [DEC, RA, WEIGHT].
         + arc_tree: ball tree
             Ball tree fill with data in angular catalog. For more details,
             refer to sklearn.neighbors.BallTree
@@ -429,7 +421,7 @@ class CorrelationFunction():
                                                      return_distance=True)
                 temp_r = numpy.repeat(point[2], index[0].size)
                 # Fill unweighted histogram
-                temp_weight = angular_points[:, 2][index[0]]
+                temp_weight = self.angular_points[:, 2][index[0]]
                 temp_hist, _, _ = numpy.histogram2d(theta[0], temp_r,
                                                     bins=(nbins_theta, nbins_r),
                                                     range=bins_range,
@@ -443,7 +435,7 @@ class CorrelationFunction():
                                                     weights=temp_weight)
                 theta_r_hist[0] += temp_hist
         elif mode == "angular":
-            for i, point in enumerate(angular_points[start:end]):
+            for i, point in enumerate(self.angular_points[start:end]):
                 if i % 10000 is 0:
                     print(i)
                 index, theta = arc_tree.query_radius(point[:2].reshape(1, -1),
@@ -563,10 +555,10 @@ class CorrelationFunction():
 
         # Import random and data catalogs
         if import_catalog:
-            self.data_cat = import_fits('data_filename', config['FITS'],
+            self.data_cat = import_fits('data_filename', config['INPUT'],
                                         region, cosmo)
-            try:
-                self.rand_cat = import_fits('random_filename', config['FITS'],
+            if config['INPUT']['random_format'] == "catalog":
+                self.rand_cat = import_fits('random_filename', config['INPUT'],
                                             region, cosmo)
 
                 # Setting up some bin variables
@@ -599,23 +591,30 @@ class CorrelationFunction():
                 r_hist = 1.*r_hist/self.rand_cat.shape[0]
                 self.r_hist = [r_hist, bins_r]
 
-                # Calculate the angular distribution R(ra, dec)
-                self.angular_hist = numpy.histogram2d(self.rand_cat[:, 0],
-                                                      self.rand_cat[:, 1],
-                                                      bins=(bins_dec, bins_ra))
-            except KeyError:
-                with numpy.load(config["HISTS"]["random_distribution"]) as temp_file:
-                    print("Importing distribution from {}:".format(temp_file))
+                # Calculate the angular distribution R(ra, dec) and breaks into
+                # data points with proper weights
+                angular_hist = numpy.histogram2d(self.rand_cat[:, 0],
+                                                 self.rand_cat[:, 1],
+                                                 bins=(bins_dec, bins_ra))
+
+                self.angular_points = hist2point(*angular_hist)
+
+            elif config['INPUT']['random_format'] == "hist":
+                print("Importing distribution from: {}".format(
+                    config['INPUT']['random_distribution']))
+                with numpy.load(config['INPUT']['random_distribution']) as temp_file:
                     r_hist = temp_file['R_HIST']
                     bins_r = temp_file['BINS_R']
-                    angular_hist = temp_file['ANGULAR_HIST']
                     bins_dec = temp_file['BINS_DEC']
                     bins_ra = temp_file['BINS_RA']
+                    self.angular_points = temp_file['ANGULAR_POINTS']
                     self.__n_rand = temp_file['N_DATA']
                     self.__w_sum_rand = temp_file['W_SUM']
                     self.__w2_sum_rand = temp_file['W2_SUM']
                 self.r_hist = [r_hist, bins_r]
-                self.angular_hist = [angular_hist, bins_dec, bins_ra]
+            else:
+                raise ValueError("Argument random_format must be either "
+                                 "\"hist\" or \"catalog\"")
 
         # Print out new configuration information
         print("Configuration:")
@@ -633,9 +632,9 @@ class CorrelationFunction():
         """ Return the comoving distance distribution and binedges """
         return self.r_hist
 
-    def angular_distribution(self):
-        """ Return angular distribution with binedges of RA and DEC """
-        return self.angular_hist
+    # def angular_distribution(self):
+        # Return angular distribution with binedges of RA and DEC
+        # return self.angular_hist
 
     def angular_distance(self, no_job, total_jobs, leaf=40):
         """ Calculate the angular distance distribution f(theta) as an
@@ -659,23 +658,18 @@ class CorrelationFunction():
         + bins: array
             Binedges of histogram  (length(theta_hist)-1).
         """
-        if self.angular_hist is None:
+        if self.angular_points is None:
             raise TypeError("Angular distribution are not imported.")
-
-        # Breaks the angular distribution R(ra, dec) into data points with
-        # proper weights.
-        angular_points = hist2point(*self.angular_hist)
 
         # Calculate start and end index based on job number and total number of
         # jobs.
-        job_range = get_job_index(no_job, total_jobs, angular_points.shape[0])
+        job_range = get_job_index(no_job, total_jobs, self.angular_points.shape[0])
 
         # Create a BallTree and use modified nearest-neighbors algorithm to
         # calculate angular distance up to a given radius.
-        arc_tree = BallTree(angular_points[:, :2], leaf_size=leaf,
+        arc_tree = BallTree(self.angular_points[:, :2], leaf_size=leaf,
                             metric='haversine')
-        theta_hist = self.__angular_distance_thread(angular_points, arc_tree,
-                                                    *job_range)
+        theta_hist = self.__angular_distance_thread(arc_tree, *job_range)
 
         return theta_hist, self.bins_theta
 
@@ -706,40 +700,29 @@ class CorrelationFunction():
         """
         if self.data_cat is None:
             raise TypeError("Catalogs are not imported.")
-        if self.angular_hist is None:
+        if self.angular_points is None:
             raise TypeError("Angular distribution are not imported")
-
-        # Breaks the angular distribution R(ra, dec) into data points with
-        # proper weights.
-        angular_points = hist2point(*self.angular_hist)
 
         # Optimizing: Runtime of BallTree modified nearest-neighbors is O(NlogM)
         # where M is the number of points in Tree and N is the number of points
         # for pairings. Thus, the BallTree is created using the size of the
         # smaller catalog, galaxies catalog vs. angular catalog.
-        if angular_points.shape[0] >= self.data_cat.shape[0]:
+        if self.angular_points.shape[0] >= self.data_cat.shape[0]:
             job_size = self.data_cat.shape[0]
             mode = "data"
-            arc_tree = BallTree(angular_points[:, :2], leaf_size=leaf,
+            arc_tree = BallTree(self.angular_points[:, :2], leaf_size=leaf,
                                 metric='haversine')
         else:
-            job_size = angular_points.shape[0]
+            job_size = self.angular_points.shape[0]
             mode = "angular"
             arc_tree = BallTree(self.data_cat[:, :2], leaf_size=leaf,
                                 metric='haversine')
 
-        # job_size = self.data_cat.shape[0]
-        # mode = "data"
-        # arc_tree = BallTree(angular_points[:, :2], leaf_size=leaf,
-                            # metric='haversine')
-
         # Calculate start and end index based on job number and total number of
         # jobs.
         job_range = get_job_index(no_job, total_jobs, job_size)
-        theta_r_hist = self.__angular_comoving_thread(angular_points,
-                                                      arc_tree,
-                                                      job_range[0],
-                                                      job_range[1], mode)
+        theta_r_hist = self.__angular_comoving_thread(
+            arc_tree, job_range[0], job_range[1], mode)
 
         return theta_r_hist, self.bins_theta, self.r_hist[1]
 
@@ -758,7 +741,6 @@ class CorrelationFunction():
         if self.r_hist is None:
             raise TypeError("Comoving distribution is not imported")
         if len(theta_hist) != self.bins_theta.size-1:
-            print(len(theta_hist))
             raise ValueError("f(theta) must have the length of {}".format(
                 self.bins_theta.size-1))
 
@@ -876,9 +858,8 @@ class CorrelationFunction():
 
         # Compute pairs separation using modified nearest-neighbors algorithm
         # to calculate angular distance up to a given radius.
-        pairs_separation = self.__pairs_separation_thread(cart_point_cat,
-                                                          cart_tree_cat, tree,
-                                                          *job_range)
+        pairs_separation = self.__pairs_separation_thread(
+            cart_point_cat, cart_tree_cat, tree, *job_range)
 
         return pairs_separation, self.bins_s
 

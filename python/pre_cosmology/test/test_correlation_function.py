@@ -182,9 +182,10 @@ class TestCorrelationFunction(unittest2.TestCase):
         numpy.testing.assert_almost_equal(bins_s, test["BINS_DD"])
 
         # Test correlation function
-        print(" - Correlation test")
-        correlation = tpcf.correlation(rand_rand[0], data_rand[0], data_data[0],
-                                       bins_s)
+        print(" - Correlation function test")
+        correlation = correlation_function.correlation(rand_rand[0],
+                                                       data_rand[0],
+                                                       data_data[0], bins_s)
         numpy.testing.assert_almost_equal(correlation, test["TPCF"])
 
 
