@@ -632,10 +632,6 @@ class CorrelationFunction():
         """ Return the comoving distance distribution and binedges """
         return self.r_hist
 
-    # def angular_distribution(self):
-        # Return angular distribution with binedges of RA and DEC
-        # return self.angular_hist
-
     def angular_distance(self, no_job, total_jobs, leaf=40):
         """ Calculate the angular distance distribution f(theta) as an
         one-dimensional histogram. Binnings are defined in config file.
