@@ -5,6 +5,7 @@ import sys
 import glob
 import configparser
 import numpy
+import correlation_function
 from correlation_function import CorrelationFunction
 from cosmology import Cosmology
 
@@ -51,13 +52,13 @@ def main():
                     list(map(float, cosmo_params["m_nu"].split(","))))
 
     # Calculate RR(s) and DR(s), DD(s)
-    rand_rand, bins_s = tpcf.rand_rand(theta_hist, z_hist, cosmo)
-    data_rand, _ = tpcf.data_rand(theta_z_hist, z_hist, cosmo)
+    rand_rand, bins_s = tpcf.rand_rand(theta_hist, cosmo)
+    data_rand, _ = tpcf.data_rand(theta_z_hist, cosmo)
     data_data, _ = tpcf.pairs_separation(0, 1, cosmo)
     # Get error
-    err_rand_rand = tpcf.get_error(rand_rand[0], rand_rand[1])
-    err_data_rand = tpcf.get_error(data_rand[0], data_rand[1])
-    err_data_data = tpcf.get_error(data_data[0], data_data[0])
+    err_rand_rand = correlation_function.get_error(rand_rand[0], rand_rand[1])
+    err_data_rand = correlation_function.get_error(data_rand[0], data_rand[1])
+    err_data_data = correlation_function.get_error(data_data[0], data_data[0])
     for i in range(2):
         rand_rand[i] = rand_rand[i]/norm[i][0]
         data_rand[i] = data_rand[i]/norm[i][1]
@@ -68,10 +69,10 @@ def main():
 
     # Construct two-point correlation function, both weighted and unweighted
     correlation = numpy.zeros((2, 2, bins_s.size-1))
-    correlation[0] = tpcf.correlation(rand_rand[0], data_rand[0], data_data[0],
-                                      bins_s)
-    correlation[1] = tpcf.correlation(rand_rand[1], data_rand[1], data_data[1],
-                                      bins_s)
+    correlation[0] = correlation_function.correlation(
+        rand_rand[0], data_rand[0], data_data[0], bins_s)
+    correlation[1] = correlation_function.correlation(
+        rand_rand[1], data_rand[1], data_data[1], bins_s)
 
     # Save results
     numpy.savez("{}_final".format(prefix),
