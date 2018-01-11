@@ -1,15 +1,19 @@
 """ Script for combining job results and calculate DD(s), DR(s), and RR(s) """
 
+import os
 import sys
 import glob
+import configparser
 import numpy
 import correlation_function
-
+from correlation_function import CorrelationFunction
+from cosmology import Cosmology
 
 def main():
     """ Main """
     # Cmd argument is output prefix
-    prefix = sys.argv[1]  # prefix can include directory name
+    cosmo_fname = sys.argv[1]
+    prefix = sys.argv[2]  # prefix can include directory name
 
     # Combining histogram by simply taking the sum in each bin
     fname_list = sorted(glob.glob("{}*.npz".format(prefix)))
@@ -19,45 +23,42 @@ def main():
         print("Reading from {}".format(fname))
         temp_file = numpy.load(fname)
         if i is 0:
-            data_data = temp_file["DD"]
             theta_hist = temp_file["ANGULAR_D"]
-            theta_r_hist = temp_file["ANGULAR_R"]
-            r_hist = temp_file["R_HIST"]
-            bins_theta_r = temp_file["BINS_THETA_R"]
-            bins_theta = temp_file["BINS_THETA"]
-            bins_r = temp_file["BINS_R"]
-            bins_s = temp_file["BINS_S"]
+            theta_z_hist = temp_file["ANGULAR_Z"]
+            z_hist = temp_file["Z_HIST"]
             norm = temp_file["NORM"]
         else:
-            data_data += temp_file["DD"]
             theta_hist += temp_file["ANGULAR_D"]
-            theta_r_hist += temp_file["ANGULAR_R"]
+            theta_z_hist += temp_file["ANGULAR_Z"]
+
+    # Create an instance of two-point correlation function that reads in
+    # configuration file
+    config_fname = "{}_config.cfg".format(prefix)
+    if not os.path.isfile(config_fname):
+        raise IOError("Configuration file not found.")
+    tpcf = CorrelationFunction(config_fname, import_catalog=True)
+
+    # Create cosmology
+    config = configparser.ConfigParser()
+    config.read(cosmo_fname)
+    cosmo_params = config["COSMOLOGY"]
+    cosmo = Cosmology()
+    cosmo.set_model(float(cosmo_params["hubble0"]),
+                    float(cosmo_params["omega_m0"]),
+                    float(cosmo_params["omega_b0"]),
+                    float(cosmo_params["omega_de0"]),
+                    float(cosmo_params["temp_cmb"]),
+                    float(cosmo_params["nu_eff"]),
+                    list(map(float, cosmo_params["m_nu"].split(","))))
 
     # Calculate RR(s) and DR(s), DD(s)
-    print("Construct RR(s)")
-    rand_rand = numpy.zeros((2, bins_s.size-1))
-    rand_rand[0] += correlation_function.prob_convolution(
-        theta_hist, r_hist[0], r_hist[0], bins_theta, bins_r, bins_r,
-        correlation_function.get_distance, bins_s)
-    rand_rand[1] += correlation_function.prob_convolution(
-        theta_hist, r_hist[1], r_hist[1], bins_theta, bins_r, bins_r,
-        correlation_function.get_distance, bins_s)
-
-    print("Construct DR(s)")
-    data_rand = numpy.zeros((2, bins_s.size-1))
-    data_rand[0] += correlation_function.prob_convolution2d(
-        theta_r_hist[0], r_hist[0], bins_theta, bins_theta_r, bins_r,
-        correlation_function.get_distance, bins_s)
-    data_rand[1] += correlation_function.prob_convolution2d(
-        theta_r_hist[1], r_hist[1], bins_theta, bins_theta_r, bins_r,
-        correlation_function.get_distance, bins_s)
-
+    rand_rand, bins_s = tpcf.rand_rand(theta_hist, cosmo)
+    data_rand, _ = tpcf.data_rand(theta_z_hist, cosmo)
+    data_data, _ = tpcf.pairs_separation(0, 1, cosmo)
     # Get error
     err_rand_rand = correlation_function.get_error(rand_rand[0], rand_rand[1])
     err_data_rand = correlation_function.get_error(data_rand[0], data_rand[1])
-    err_data_data = correlation_function.get_error(data_data[0], data_data[1])
-
-    # Normalize
+    err_data_data = correlation_function.get_error(data_data[0], data_data[0])
     for i in range(2):
         rand_rand[i] = rand_rand[i]/norm[i][0]
         data_rand[i] = data_rand[i]/norm[i][1]

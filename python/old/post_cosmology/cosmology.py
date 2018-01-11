@@ -10,19 +10,10 @@ two changes:
 """
 
 import os
-import errno
+import pathlib
 import numpy
 from astropy import cosmology, units
 from scipy import interpolate
-
-def mkdir_p(path):
-    try:
-        os.makedirs(path)
-    except OSError as exc:
-        if exc.errno == errno.EEXIST and os.path.isdir(path):
-            pass
-        else:
-            raise
 
 class Cosmology():
     """ Class to manage cosmological parameters and convert redshift z into
@@ -32,7 +23,7 @@ class Cosmology():
         is used. For now the cosmological parameters measured by Planck
         (P.A.R. Ade et al., Paper XIII, A&A 594:A13, 2016) are used.
         """
-        mkdir_p("model_cache")
+        pathlib.Path("model_cache").mkdir(parents=True, exist_ok=True)
         self.model = 0
         self.__comoving_table = 0
         self.set_model()

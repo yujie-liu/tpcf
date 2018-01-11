@@ -1,9 +1,10 @@
 """ Unittest for correlation_function.py """
 
-
+import configparser
 import unittest2
 import numpy
 import correlation_function
+from cosmology import Cosmology
 
 PI = 3.14159265359
 
@@ -129,10 +130,22 @@ class TestCorrelationFunction(unittest2.TestCase):
                                   [-4.1, 5.0, 3.1]])
         numpy.testing.assert_almost_equal(funct(hist, x_edges, y_edges),
                                           true_array)
-
     def test_correlation_class(self):
         """ Test correlation_function.CorrelationFunction class """
-        print("\nTest CorrelationFunction and Convolution function")
+        print("\nTest CorrelationFunction")
+
+        # Define cosmology
+        config = configparser.ConfigParser()
+        config.read("test/test_config.cfg")
+        cosmo_params = config["COSMOLOGY"]
+        cosmo = Cosmology()
+        cosmo.set_model(float(cosmo_params["hubble0"]),
+                        float(cosmo_params["omega_m0"]),
+                        float(cosmo_params["omega_b0"]),
+                        float(cosmo_params["omega_de0"]),
+                        float(cosmo_params["temp_cmb"]),
+                        float(cosmo_params["nu_eff"]),
+                        list(map(float, cosmo_params["m_nu"].split(","))))
 
         test = numpy.load("test/tpcf_test.npz")
         tpcf = correlation_function.CorrelationFunction("test/test_config.cfg")
@@ -143,11 +156,11 @@ class TestCorrelationFunction(unittest2.TestCase):
                             tpcf.normalization(weighted=False)])
         numpy.testing.assert_almost_equal(norm, test["NORM"])
 
-        # Test comoving distribution P(r)
-        print(" - Comoving distribution test ")
-        r_hist, bins_r = tpcf.r_hist
-        numpy.testing.assert_almost_equal(r_hist, test["R_HIST"])
-        numpy.testing.assert_almost_equal(bins_r, test["BINS_PR"])
+        # Test redshift distribution P(z)
+        print(" - Redshift distribution test ")
+        z_hist, bins_z = tpcf.redshift_distribution()
+        numpy.testing.assert_almost_equal(z_hist, test["Z_HIST"])
+        numpy.testing.assert_almost_equal(bins_z, test["BINS_PZ"])
 
         # Test angular distribution f(theta)
         print(" - Angular distribution f(theta) test ")
@@ -155,37 +168,35 @@ class TestCorrelationFunction(unittest2.TestCase):
         numpy.testing.assert_almost_equal(theta_hist, test["ANGULAR_D"])
         numpy.testing.assert_almost_equal(bins_theta, test["BINS_FTHETA"])
 
-        # Test angular-radial distribution g(theta, r)
-        print(" - Angular-radial distribution g(theta, r) test ")
-        theta_r_hist, bins_theta, bins_r = tpcf.angular_comoving(0, 1)
-        numpy.testing.assert_almost_equal(theta_r_hist, test["ANGULAR_R"])
+        # Test angular-radial distribution g(theta, z)
+        print(" - Angular-redshift distribution g(theta, z) test ")
+        theta_z_hist, bins_theta, bins_z = tpcf.angular_redshift(0, 1)
+        numpy.testing.assert_almost_equal(theta_z_hist, test["ANGULAR_Z"])
         numpy.testing.assert_almost_equal(bins_theta, test["BINS_GTHETA"])
-        numpy.testing.assert_almost_equal(bins_r, test["BINS_GR"])
+        numpy.testing.assert_almost_equal(bins_z, test["BINS_GZ"])
 
         # Test random-random distribution RR(s)
-        print(" - Probability convolution function test ")
         print(" - Random-random distribution RR(s) test")
-        rand_rand, bins_s = tpcf.rand_rand(theta_hist)
+        rand_rand, bins_s = tpcf.rand_rand(theta_hist, cosmo)
         numpy.testing.assert_almost_equal(rand_rand, test["RR"])
         numpy.testing.assert_almost_equal(bins_s, test["BINS_RR"])
 
         # Test data-random distribution DR(s)
         print(" - Data-random distribution DR(s) test")
-        data_rand, bins_s = tpcf.data_rand(theta_r_hist)
+        data_rand, bins_s = tpcf.data_rand(theta_z_hist, cosmo)
         numpy.testing.assert_almost_equal(data_rand, test["DR"])
         numpy.testing.assert_almost_equal(bins_s, test["BINS_DR"])
 
         # Test data-data distribution DD(s)
         print(" - Data-data distribution DD(s) test")
-        data_data, bins_s = tpcf.pairs_separation(0, 1, out="DD")
+        data_data, bins_s = tpcf.pairs_separation(0, 1, cosmo)
         numpy.testing.assert_almost_equal(data_data, test["DD"])
         numpy.testing.assert_almost_equal(bins_s, test["BINS_DD"])
 
         # Test correlation function
-        print(" - Correlation function test")
-        correlation = correlation_function.correlation(rand_rand[0],
-                                                       data_rand[0],
-                                                       data_data[0], bins_s)
+        print(" - Correlation test")
+        correlation = correlation_function.correlation(
+            rand_rand[0], data_rand[0], data_data[0], bins_s)
         numpy.testing.assert_almost_equal(correlation, test["TPCF"])
 
 

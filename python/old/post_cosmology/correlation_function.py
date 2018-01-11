@@ -8,13 +8,12 @@ import configparser
 import numpy
 from sklearn.neighbors import KDTree, BallTree
 from astropy.io import fits
-from cosmology import Cosmology
 
 DEG2RAD = numpy.pi/180.
 RAD2DEG = 180./numpy.pi
 
 
-def import_fits(fname_key, fits_reader, region, cosmo):
+def import_fits(fname_key, fits_reader, region):
     """ Import data into 2-d array
     Inputs:
     + fname_key: string
@@ -23,15 +22,13 @@ def import_fits(fname_key, fits_reader, region, cosmo):
         Must have attributes: "INDEX"=index of headers. "RA", "DEC", "Z",
         "WEIGHT"=corresponded variable names in header.
     + region: dict
-        Region of galaxies to import. Must have attributes: "dec_max", "dec_min"
-        , "ra_max", "ra_min", "z_min", "z_max"
-    + cosmo: cosmology.Cosmology
-        Cosmological parameters to convert redshift to comoving distance.
+        Region of galaxies to import. Must have attributes: "dec_max", "dec_min",
+        "ra_max", "ra_min", "z_min", "z_max"
     Outputs:
     + catalog: ndarray or tuple of ndarrays
-        Return catalog format in each row [DEC, RA, R, WEIGHT].
+        Return catalog format in each row [DEC, RA, Z, WEIGHT].
     """
-    print("Importing catalog from: {}".format(fits_reader[fname_key]))
+    print("Importing from: {}".format(fits_reader[fname_key]))
 
     header_index = int(fits_reader["index"])
     hdulist = fits.open(fits_reader[fname_key])
@@ -39,7 +36,6 @@ def import_fits(fname_key, fits_reader, region, cosmo):
     temp_dec = DEG2RAD*tbdata[fits_reader["dec"]]
     temp_ra = DEG2RAD*tbdata[fits_reader["ra"]]
     temp_z = tbdata[fits_reader["z"]]
-    temp_r = cosmo.z2r(temp_z)
     try:
         temp_weight_fkp = tbdata[fits_reader["weight_fkp"]]
         temp_weight_noz = tbdata[fits_reader["weight_noz"]]
@@ -50,7 +46,7 @@ def import_fits(fname_key, fits_reader, region, cosmo):
     except KeyError:
         temp_weight = tbdata[fits_reader["weight"]]
 
-    catalog = numpy.array([temp_dec, temp_ra, temp_r, temp_weight]).T
+    catalog = numpy.array([temp_dec, temp_ra, temp_z, temp_weight]).T
     hdulist.close()
 
     # cut by region
@@ -58,11 +54,11 @@ def import_fits(fname_key, fits_reader, region, cosmo):
     dec_max = DEG2RAD*float(region["dec_max"])
     ra_min = DEG2RAD*float(region["ra_min"])
     ra_max = DEG2RAD*float(region["ra_max"])
-    r_min = cosmo.z2r(float(region["z_min"]))
-    r_max = cosmo.z2r(float(region["z_max"]))
+    z_min = float(region["z_min"])
+    z_max = float(region["z_max"])
     cut = ((dec_min <= temp_dec) & (temp_dec <= dec_max)
-           & (ra_min <= temp_ra) & (temp_ra <= ra_max)
-           & (r_min <= temp_r) & (temp_r <= r_max))
+           &(ra_min <= temp_ra) & (temp_ra <= ra_max)
+           &(z_min <= temp_z) & (temp_z <= z_max))
 
     print("Data size: {}".format(numpy.sum(cut)))
     return catalog[cut]
@@ -319,13 +315,6 @@ def get_error(hist_w, hist_u):
     return error
 
 
-# def get_correlation_error(correlation_function):
-    # Get the bin error of the two-point correlation (DD-2DR+RR)/RR by using
-    # error propagation with equation:
-    # Err_tpcf = Sqrt[(Err_DD^2+Err_DR^2+(DD-DR)^2)*Err_RR^2/RR^2]
-    # pass
-
-
 class CorrelationFunction():
     """ Class to construct two-point correlation function """
     def __init__(self, config_fname, import_catalog=True):
@@ -336,7 +325,7 @@ class CorrelationFunction():
         # Initialize variables
         self.data_cat = None
         self.rand_cat = None
-        self.r_hist = None
+        self.z_hist = None
         self.angular_points = None
         self.bins_s = None
         self.bins_theta = None
@@ -383,10 +372,14 @@ class CorrelationFunction():
 
         return theta_hist
 
-    def __angular_comoving_thread(self, arc_tree, start, end, mode):
-        """ Thread function for calculating angular comoving distribution
-        g(theta, r) as two-dimensional histogram.
+    def __angular_redshift_thread(self, angular_points, arc_tree,
+                                  start, end, mode):
+        """ Thread function for calculating angular-redshift distribution
+        g(theta, z) as two-dimensional histogram.
         Inputs:
+        + angular_points: ndarray
+            Angular distribution R(ra, dec) breaks into data points with
+            proper weights. Format of each row must be [DEC, RA, WEIGHT].
         + arc_tree: ball tree
             Ball tree fill with data in angular catalog. For more details,
             refer to sklearn.neighbors.BallTree
@@ -398,20 +391,20 @@ class CorrelationFunction():
             Must be either "data" or "angular". If "data", loop over galaxies
             catalog. If "angular", loop over angular distribution points.
         Outputs:
-        + theta_r_hist: ndarray or tuple of ndarrays
-            Return values of weighted and unweighted g(theta, r) respectively.
-            Each has dimension (length(bins_theta)-1, length(bins_r)-1).
+        + theta_z_hist: ndarray or tuple of ndarrays
+            Return values of weighted and unweighted g(theta, z) respectively.
+            Each has dimension (length(self.__bins_theta)-1, length(self.__bins_z)-1).
         """
-        # Define angular-radial distribution g(theta, r) as weighted and
+        # Define angular-radial distribution g(theta, z) as weighted and
         # unweighted 2-d histogram respectively
         nbins_theta = self.bins_theta.size-1
-        nbins_r = self.r_hist[1].size-1
+        nbins_z = self.z_hist[1].size-1
         theta_max = self.bins_theta.max()
         bins_range = ((0., theta_max),
-                      (self.r_hist[1].min(), self.r_hist[1].max()))
-        theta_r_hist = numpy.zeros((2, nbins_theta, nbins_r))
+                      (self.z_hist[1].min(), self.z_hist[1].max()))
+        theta_z_hist = numpy.zeros((2, nbins_theta, nbins_z))
 
-        print("Construct g(theta, r) from index {} to {}".format(start, end-1))
+        print("Construct g(theta, z) from index {} to {}".format(start, end-1))
         if mode == "data":
             for i, point in enumerate(self.data_cat[start:end]):
                 if i % 10000 is 0:
@@ -419,45 +412,45 @@ class CorrelationFunction():
                 index, theta = arc_tree.query_radius(point[:2].reshape(1, -1),
                                                      r=theta_max,
                                                      return_distance=True)
-                temp_r = numpy.repeat(point[2], index[0].size)
+                temp_z = numpy.repeat(point[2], index[0].size)
                 # Fill unweighted histogram
-                temp_weight = self.angular_points[:, 2][index[0]]
-                temp_hist, _, _ = numpy.histogram2d(theta[0], temp_r,
-                                                    bins=(nbins_theta, nbins_r),
+                temp_weight = angular_points[:, 2][index[0]]
+                temp_hist, _, _ = numpy.histogram2d(theta[0], temp_z,
+                                                    bins=(nbins_theta, nbins_z),
                                                     range=bins_range,
                                                     weights=temp_weight)
-                theta_r_hist[1] += temp_hist
+                theta_z_hist[1] += temp_hist
                 # Fill weighted histogram
                 temp_weight = temp_weight*point[3]
-                temp_hist, _, _ = numpy.histogram2d(theta[0], temp_r,
-                                                    bins=(nbins_theta, nbins_r),
+                temp_hist, _, _ = numpy.histogram2d(theta[0], temp_z,
+                                                    bins=(nbins_theta, nbins_z),
                                                     range=bins_range,
                                                     weights=temp_weight)
-                theta_r_hist[0] += temp_hist
+                theta_z_hist[0] += temp_hist
         elif mode == "angular":
-            for i, point in enumerate(self.angular_points[start:end]):
+            for i, point in enumerate(angular_points[start:end]):
                 if i % 10000 is 0:
                     print(i)
                 index, theta = arc_tree.query_radius(point[:2].reshape(1, -1),
                                                      r=theta_max,
                                                      return_distance=True)
-                temp_r = self.data_cat[:, 2][index[0]]
+                temp_z = self.data_cat[:, 2][index[0]]
                 # Fill weighted histogram
                 temp_weight = point[2]*self.data_cat[:, 3][index[0]]
-                temp_hist, _, _ = numpy.histogram2d(theta[0], temp_r,
-                                                    bins=(nbins_theta, nbins_r),
+                temp_hist, _, _ = numpy.histogram2d(theta[0], temp_z,
+                                                    bins=(nbins_theta, nbins_z),
                                                     range=bins_range,
                                                     weights=temp_weight)
-                theta_r_hist[0] += temp_hist
+                theta_z_hist[0] += temp_hist
                 # Fill unweighted histogram
                 temp_weight = numpy.repeat(point[2], index[0].size)
-                temp_hist, _, _ = numpy.histogram2d(theta[0], temp_r,
-                                                    bins=(nbins_theta, nbins_r),
+                temp_hist, _, _ = numpy.histogram2d(theta[0], temp_z,
+                                                    bins=(nbins_theta, nbins_z),
                                                     range=bins_range,
                                                     weights=temp_weight)
-                theta_r_hist[1] += temp_hist
+                theta_z_hist[1] += temp_hist
 
-        return theta_r_hist
+        return theta_z_hist
 
     def __pairs_separation_thread(self, point_cat, tree_cat, tree, start, end):
         """ Thread function for calculating separation distribution.
@@ -475,7 +468,7 @@ class CorrelationFunction():
         + end: int
             Ending index of galaxies in galaxies catalog: index_end = end-1.
         Outputs:
-        + pairs_separation: ndarrays or tuples of ndarrays
+        + pairs_seprtion: ndarrays or tuples of ndarrays
             Return values of weighted and unweighted DD(s) respectively.
         """
         # Define weighted and unweighted DD(s) as two one-dimensional
@@ -514,21 +507,10 @@ class CorrelationFunction():
     def set_configuration(self, config_fname, import_catalog=True):
         """ Sets up binning variable based on input configuration file.
             If import_catalog is True, will import catalog data."""
-        config = configparser.SafeConfigParser(os.environ)
+        config = configparser.ConfigParser(os.environ)
         config.read(config_fname)
         binnings = config['BINNING']
         region = config['REGION']
-
-        # Create cosmology
-        cosmo_params = config["COSMOLOGY"]
-        cosmo = Cosmology()
-        cosmo.set_model(float(cosmo_params["hubble0"]),
-                        float(cosmo_params["omega_m0"]),
-                        float(cosmo_params["omega_b0"]),
-                        float(cosmo_params["omega_de0"]),
-                        float(cosmo_params["temp_cmb"]),
-                        float(cosmo_params["nu_eff"]),
-                        list(map(float, cosmo_params["m_nu"].split(","))))
 
         # Setting up binning variables
         # spatial separation (Mpc/h)
@@ -537,59 +519,47 @@ class CorrelationFunction():
         self.bins_s, binwidth_s = get_bins(0., s_max, binwidth_s)
 
         # comoving distance distribution(Mpc/h)
-        r_min = cosmo.z2r(float(region["z_min"]))
-        r_max = cosmo.z2r(float(region["z_max"]))
-        if binnings['binwidth_r'] == 'auto':
-            binwidth_r = binwidth_s/4.
-        else:
-            binwidth_r = float(binnings['binwidth_r'])
-        bins_r, binwidth_r = get_bins(r_min, r_max, binwidth_r)
+        z_min = float(region["z_min"])
+        z_max = float(region["z_max"])
+        binwidth_z = float(binnings['binwidth_z'])
+        bins_z, binwidth_z = get_bins(z_min, z_max, binwidth_z)
 
         theta_max = DEG2RAD*float(region["theta_max"])
-        if binnings['binwidth_theta'] == 'auto':
-            binwidth_theta = 1.*binwidth_r/r_max
-        else:
-            binwidth_theta = DEG2RAD*float(binnings['binwidth_theta'])
+        binwidth_theta = DEG2RAD*float(binnings['binwidth_theta'])
         self.bins_theta, binwidth_theta = get_bins(0., theta_max,
                                                    binwidth_theta)
 
         # Import random and data catalogs
         if import_catalog:
             self.data_cat = import_fits('data_filename', config['INPUT'],
-                                        region, cosmo)
+                                        region)
             if config['INPUT']['random_format'] == "catalog":
                 self.rand_cat = import_fits('random_filename', config['INPUT'],
-                                            region, cosmo)
+                                            region)
 
                 # Setting up some bin variables
                 # declination, right ascension, and angular separation (rad)
                 dec_min = DEG2RAD*float(region["dec_min"])
                 dec_max = DEG2RAD*float(region["dec_max"])
-                if binnings['binwidth_dec'] == 'auto':
-                    binwidth_dec = 1.*binwidth_r/r_max
-                else:
-                    binwidth_dec = DEG2RAD*float(binnings['binwidth_dec'])
+                binwidth_dec = DEG2RAD*float(binnings['binwidth_dec'])
                 bins_dec, binwidth_dec = get_bins(dec_min, dec_max,
                                                   binwidth_dec)
 
                 ra_min = DEG2RAD*float(region["ra_min"])
                 ra_max = DEG2RAD*float(region["ra_max"])
-                if binnings['binwidth_ra'] == 'auto':
-                    binwidth_ra = 1.*binwidth_r/r_max
-                else:
-                    binwidth_ra = DEG2RAD*float(binnings['binwidth_ra'])
+                binwidth_ra = DEG2RAD*float(binnings['binwidth_ra'])
                 bins_ra, binwidth_ra = get_bins(ra_min, ra_max, binwidth_ra)
 
                 # Calculate P(r) and R(ra, dec)
                 # Calculate weighted and unweighted radial distribution P(r) as
                 # two one-dimensional histograms respectively
-                r_hist = numpy.zeros((2, bins_r.size-1))
-                r_hist[0] += numpy.histogram(self.rand_cat[:, 2], bins=bins_r,
+                z_hist = numpy.zeros((2, bins_z.size-1))
+                z_hist[0] += numpy.histogram(self.rand_cat[:, 2], bins=bins_z,
                                              weights=self.rand_cat[:, 3])[0]
-                r_hist[1] += numpy.histogram(self.rand_cat[:, 2],
-                                             bins=bins_r)[0]
-                r_hist = 1.*r_hist/self.rand_cat.shape[0]
-                self.r_hist = [r_hist, bins_r]
+                z_hist[1] += numpy.histogram(self.rand_cat[:, 2],
+                                             bins=bins_z)[0]
+                z_hist = 1.*z_hist/self.rand_cat.shape[0]
+                self.z_hist = [z_hist, bins_z]
 
                 # Calculate the angular distribution R(ra, dec) and breaks into
                 # data points with proper weights
@@ -603,15 +573,15 @@ class CorrelationFunction():
                 print("Importing distribution from: {}".format(
                     config['INPUT']['random_distribution']))
                 with numpy.load(config['INPUT']['random_distribution']) as temp_file:
-                    r_hist = temp_file['R_HIST']
-                    bins_r = temp_file['BINS_R']
+                    z_hist = temp_file['Z_HIST']
+                    bins_z = temp_file['BINS_Z']
                     bins_dec = temp_file['BINS_DEC']
                     bins_ra = temp_file['BINS_RA']
                     self.angular_points = temp_file['ANGULAR_POINTS']
                     self.__n_rand = temp_file['N_DATA']
                     self.__w_sum_rand = temp_file['W_SUM']
                     self.__w2_sum_rand = temp_file['W2_SUM']
-                self.r_hist = [r_hist, bins_r]
+                self.z_hist = [z_hist, bins_z]
             else:
                 raise ValueError("Argument random_format must be either "
                                  "\"hist\" or \"catalog\"")
@@ -622,15 +592,14 @@ class CorrelationFunction():
         print("-[Min, Max, Binwidth] = [{}, {}, {}]".format(0., s_max,
                                                             binwidth_s))
         print("Comoving distribution (Mpc/h):")
-        print("-[Min, Max, Binwidth] = [{}, {}, {}]".format(r_min, r_max,
-                                                            binwidth_r))
+        print("-[Min, Max, Binwidth] = [{}, {}, {}]".format(z_min, z_max,
+                                                            binwidth_z))
         print("Angular separation (rad):")
         print("-[Min, Max, Binwidth] = [{}, {}, {}]".format(0., theta_max,
                                                             binwidth_theta))
-
-    def comoving_distribution(self):
+    def redshift_distribution(self):
         """ Return the comoving distance distribution and binedges """
-        return self.r_hist
+        return self.z_hist
 
     def angular_distance(self, no_job, total_jobs, leaf=40):
         """ Calculate the angular distance distribution f(theta) as an
@@ -669,9 +638,9 @@ class CorrelationFunction():
 
         return theta_hist, self.bins_theta
 
-    def angular_comoving(self, no_job, total_jobs, leaf=40):
-        """ Calculate g(theta, r), angular distance vs. comoving distribution,
-        as a two-dimensional histogram. Binnings are defined in config file.
+    def angular_redshift(self, no_job, total_jobs, leaf=40):
+        """ Calculate g(theta, z), angular-redshift distribution, as a
+        two-dimensional histogram. Binnings are defined in config file.
         Use a modified nearest-neighbors BallTree algorithm to calculate
         angular distance up to a given radius defined in config file.
         Inputs:
@@ -686,12 +655,12 @@ class CorrelationFunction():
             leaf_size <= n_points <= 2*leaf_size, except in the case that
             n_samples < leaf_size. More details in sklearn.neighbors.BallTree.
         Outputs:
-        + theta_r_hist: ndarray or tuple of ndarrays
-            Return values of weighted and unweighted g(theta, r) respectively.
-            Each has dimension (length(bins_theta)-1, length(bins_r)-1).
+        + theta_z_hist: ndarray or tuple of ndarrays
+            Return values of weighted and unweighted g(theta, z) respectively.
+            Each has dimension (length(bins_theta)-1, length(bins_z)-1).
         + bins_theta: array
             Binedges along x-axis.
-        + bins_r: array
+        + bins_z: array
             Binedges along y-axis.
         """
         if self.data_cat is None:
@@ -717,30 +686,37 @@ class CorrelationFunction():
         # Calculate start and end index based on job number and total number of
         # jobs.
         job_range = get_job_index(no_job, total_jobs, job_size)
-        theta_r_hist = self.__angular_comoving_thread(
-            arc_tree, job_range[0], job_range[1], mode)
+        theta_z_hist = self.__angular_redshift_thread(
+            self.angular_points, arc_tree, job_range[0], job_range[1], mode)
 
-        return theta_r_hist, self.bins_theta, self.r_hist[1]
+        return theta_z_hist, self.bins_theta, self.z_hist[1]
 
-    def rand_rand(self, theta_hist):
+    def rand_rand(self, theta_hist, cosmo):
         """ Calculate separation distribution RR(s) between pairs of randoms.
         Inputs:
-        + theta_hist: list, array-like
-            Values of angular distance distribution f(theta). Must have
-            length of self.bins_theta-1
+        + theta_hist: array
+            Values of angular distance distribution f(theta).
+        + cosmo: cosmology.Cosmology
+            Cosmology parameters to convert redshift z to comoving distance r.
+            See cosmology.Cosmology for more detail.
         Outputs:
         + rand_rand: ndarrays or tuples of ndarrays
             Return values of weighted and unweighted RR(s) respectively.
         + bins: array
             Binedges of RR(s) (length(rand_rand_hist)+1).
         """
-        if self.r_hist is None:
+        if self.z_hist is None:
             raise TypeError("Comoving distribution is not imported")
         if len(theta_hist) != self.bins_theta.size-1:
             raise ValueError("f(theta) must have the length of {}".format(
                 self.bins_theta.size-1))
 
-        r_hist, bins_r = self.r_hist
+        # Convert redshift distribution P(z) to comoving distance distribution
+        # P(r) using input cosmology. Note that only binedges change while
+        # the value is unchanged.
+        r_hist, bins_r = self.z_hist
+        bins_r = cosmo.z2r(bins_r)
+
         print("Construct RR(s)")
         rand_rand = numpy.zeros((2, self.bins_s.size-1))
         rand_rand[0] += prob_convolution(theta_hist, r_hist[0], r_hist[0],
@@ -749,41 +725,53 @@ class CorrelationFunction():
         rand_rand[1] += prob_convolution(theta_hist, r_hist[1], r_hist[1],
                                          self.bins_theta, bins_r, bins_r,
                                          get_distance, self.bins_s)
+
+        print("Construct RR(s)")
+
         return rand_rand, self.bins_s
 
-    def data_rand(self, theta_r_hist):
+    def data_rand(self, theta_z_hist, cosmo):
         """ Calculate separation distribution DR(s) between pairs of a random
         point and a galaxy.
         Inputs:
-        + theta_r_hist: ndarrays or tuples of ndarrays
-            Values of weighted and unweighted g(theta, r) respectively.
+        + theta_z_hist: ndarrays or tuples of ndarrays
+            Values of weighted and unweighted g(theta, z) respectively.
+            Dimension must be (2, length(self.__bins_theta)-1, length(self.__bins_z)-1).
+        + cosmo: cosmology.Cosmology
+            Cosmology parameters to convert redshift z to comoving distance r.
+            See cosmology.Cosmology for more detail.
         Outputs:
         + data_rand: ndarrays or tuples of ndarrays
             Return values of weighted and unweighted DR(s) respectively.
         + bins: array
             Binedges of DR(s) (length(data_rand_hist)+1).
         """
-        if self.r_hist is None:
+        if self.z_hist is None:
             raise TypeError("Comoving distribution is not imported")
-        if theta_r_hist.shape != (2, self.bins_theta.size-1,
-                                  self.r_hist[1].size-1):
-            print(theta_r_hist.shape)
+        if theta_z_hist.shape != (2, self.bins_theta.size-1,
+                                  self.z_hist[1].size-1):
+            print(theta_z_hist.shape)
             raise ValueError(
-                ("g(theta, r) must have the dimension of (2, {}, {})").format(
-                    self.bins_theta.size-1, self.r_hist[1].size-1))
+                ("g(theta, z) must have the dimension of (2, {}, {})").format(
+                    self.bins_theta.size-1, self.z_hist[1].size-1))
 
-        r_hist, bins_r = self.r_hist
+        # Convert redshift distribution P(z) to comoving distance distribution
+        # P(r) using input cosmology. Note that only binedges change while
+        # the value is unchanged.
+        r_hist, bins_r = self.z_hist
+        bins_r = cosmo.z2r(bins_r)
+
         print("Construct DR(s)")
         data_rand = numpy.zeros((2, self.bins_s.size-1))
-        data_rand[0] += prob_convolution2d(theta_r_hist[0], r_hist[0],
+        data_rand[0] += prob_convolution2d(theta_z_hist[0], r_hist[0],
                                            self.bins_theta, bins_r, bins_r,
                                            get_distance, self.bins_s)
-        data_rand[1] += prob_convolution2d(theta_r_hist[1], r_hist[1],
+        data_rand[1] += prob_convolution2d(theta_z_hist[1], r_hist[1],
                                            self.bins_theta, bins_r, bins_r,
                                            get_distance, self.bins_s)
         return data_rand, self.bins_s
 
-    def pairs_separation(self, no_job, total_jobs, out="DD", leaf=40):
+    def pairs_separation(self, no_job, total_jobs, cosmo, out="DD", leaf=40):
         """ Calculate separation distribution between pairs of galaxies.
         Use a modfied nearest-neighbors k-d tree algorithm to calculate distance
         up to a given radius defined in config file.
@@ -794,13 +782,16 @@ class CorrelationFunction():
             (0 <= no_job < total_jobs).
         + total_jobs: int
             Total number of jobs.
+        + cosmo: cosmology.Cosmology
+            Cosmology parameters to convert redshift z to comoving distance r.
+            See cosmology.Cosmology for more detail.
         + out: string (default="DD")
             Valid argument are "RR", "DR", DD". Distribution to calculate.
         + leaf: int (default=40)
             Number of points at which to switch to brute-force. For a specified
             leaf_size, a leaf node is guaranteed to satisfy
             leaf_size <= n_points <= 2*leaf_size, except in the case that
-            n_samples < leaf_size. More details in sklearn.neighbors.KDTree.
+            n_samples < leaf_size. More details in sklearn.neighbors.BallTree.
         Outputs:
         + pairs_separation: ndarrays or tuples of ndarrays
             Return values of weighted and unweighted pairs_separation
@@ -808,22 +799,17 @@ class CorrelationFunction():
         + bins: array
             Binedges of DD(s) (length(data_data_hist)+1).
         """
+        if self.data_cat is None or self.rand_cat is None:
+            raise TypeError("Catalogs are not imported.")
+
         # Choose catalogs based on input
         if out == "DD":
-            if self.data_cat is None:
-                raise TypeError("Data catalog is not imported.")
             tree_cat = self.data_cat
             point_cat = self.data_cat
         elif out == "RR":
-            if self.rand_cat is None:
-                raise TypeError("Random catalog is not imported.")
             tree_cat = self.rand_cat
             point_cat = self.rand_cat
         elif out == "DR":
-            if self.data_cat is None:
-                raise TypeError("Data catalog is not imported.")
-            if self.rand_cat is None:
-                raise TypeError("Random catalog is not imported.")
             # Optimizing: Run time of k-d tree modified nearest-neighbors is
             # O(NlogM) where M is the number of points in Tree and N is the
             # number of points for pairings. Thus, the kd-tree is created using
@@ -838,12 +824,14 @@ class CorrelationFunction():
         # Convert Celestial coordinate into Cartesian coordinate and create
         # k-d tree and point cartesian catalog.
         # Point cartesian catalog
-        temp = celestial2cart(point_cat[:, 0], point_cat[:, 1], point_cat[:, 2])
+        temp = celestial2cart(point_cat[:, 0], point_cat[:, 1],
+                              cosmo.z2r(point_cat[:, 2]))
         cart_point_cat = numpy.array([temp[0], temp[1], temp[2],
                                       point_cat[:, 3]]).T
 
         # k-d tree
-        temp = celestial2cart(tree_cat[:, 0], tree_cat[:, 1], tree_cat[:, 2])
+        temp = celestial2cart(tree_cat[:, 0], tree_cat[:, 1],
+                              cosmo.z2r(tree_cat[:, 2]))
         cart_tree_cat = numpy.array([temp[0], temp[1], temp[2],
                                      tree_cat[:, 3]]).T
         tree = KDTree(cart_tree_cat[:, :3], leaf_size=leaf, metric='euclidean')
@@ -854,12 +842,13 @@ class CorrelationFunction():
 
         # Compute pairs separation using modified nearest-neighbors algorithm
         # to calculate angular distance up to a given radius.
-        pairs_separation = self.__pairs_separation_thread(
-            cart_point_cat, cart_tree_cat, tree, *job_range)
+        pairs_separation = self.__pairs_separation_thread(cart_point_cat,
+                                                          cart_tree_cat, tree,
+                                                          *job_range)
 
         return pairs_separation, self.bins_s
 
-    # Compute normalization constant
+
     def normalization(self, weighted=True):
         """ Calculate and return normalization factor
         Inputs:

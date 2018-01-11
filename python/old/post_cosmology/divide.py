@@ -1,6 +1,7 @@
 """ Script for submitting jobs to calculate DD(s), DR(s), and RR(s) """
 
 import sys
+import subprocess
 import numpy
 from correlation_function import CorrelationFunction
 
@@ -22,31 +23,30 @@ def main():
 
     # Calculate child-process data
     print("Job number: {}. Total jobs: {}.".format(no_job, total_jobs))
+    # Save configuration files
+    if no_job is 0:
+        subprocess.call("cp {} {}_config.cfg".format(config_fname, prefix).split())
 
     # Create an instance of two-point correlation function that reads in
     # configuration file
     tpcf = CorrelationFunction(config_fname)
-
     # Angular distance distribution f(theta)
-    theta_hist, bins_theta = tpcf.angular_distance(no_job, total_jobs)
+    theta_hist, _ = tpcf.angular_distance(no_job, total_jobs)
     # Radial angular distribution g(theta, r)
-    theta_r_hist, _, bins_theta_r = tpcf.angular_comoving(no_job, total_jobs)
-    # Galaxies separation distribution DD(s)
-    data_data, bins_s = tpcf.pairs_separation(no_job, total_jobs, out="DD")
+    theta_z_hist, _, _ = tpcf.angular_redshift(no_job, total_jobs)
 
-    # Save with prefix-
+    # Save with prefix
     if no_job is 0:
         # Save comoving distribution P(r) and normalization constant
-        r_hist, bins_r = tpcf.comoving_distribution()
+        z_hist, _ = tpcf.redshift_distribution()
         norm = numpy.array([tpcf.normalization(weighted=True),
                             tpcf.normalization(weighted=False)])
         numpy.savez("{}_{:03d}".format(prefix, no_job),
-                    DD=data_data, ANGULAR_D=theta_hist, ANGULAR_R=theta_r_hist,
-                    R_HIST=r_hist, BINS_THETA=bins_theta, BINS_R=bins_r,
-                    BINS_THETA_R=bins_theta_r, BINS_S=bins_s, NORM=norm)
+                    ANGULAR_D=theta_hist, ANGULAR_Z=theta_z_hist,
+                    Z_HIST=z_hist, NORM=norm)
     else:
         numpy.savez("{}_{:03d}".format(prefix, no_job),
-                    DD=data_data, ANGULAR_D=theta_hist, ANGULAR_R=theta_r_hist)
+                    ANGULAR_D=theta_hist, ANGULAR_Z=theta_z_hist)
 
 
 if __name__ == "__main__":
