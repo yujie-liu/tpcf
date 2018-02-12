@@ -9,7 +9,6 @@ two changes:
 2) Allow for the possibile definition of nonzero curvature (not by default).
 """
 
-
 import numpy
 from astropy import cosmology, units
 from scipy import interpolate
@@ -17,7 +16,7 @@ from scipy import interpolate
 class Cosmology():
     """ Class to manage cosmological parameters and convert redshift z into
         comoving distance using linear interpolation technique. """
-    def __init__(self, cosmo):
+    def __init__(self, cosmo=None):
         """ Initialize a cosmological model. Note that H0 = 100 h km/s/Mpc
         is used. For now the cosmological parameters measured by Planck
         (P.A.R. Ade et al., Paper XIII, A&A 594:A13, 2016) are used.
@@ -47,19 +46,24 @@ class Cosmology():
             Key: hubble0, omega_m0, omega_b0, omega_de0, temp_cmb, nu_eff
         """
         # Set astropy cosmology model
-        params = {}
-        for key, val in cosmo.items():
-            params[key] = float(val)
-        m_nu1 = params['m_nu1']
-        m_nu2 = params['m_nu2']
-        m_nu3 = params['m_nu3']
-        self.model = cosmology.LambdaCDM(H0=params['hubble0']*units.km/(units.Mpc*units.s),
-                                         Om0=params['omega_m0'],
-                                         Ob0=params['omega_b0'],
-                                         Ode0=params['omega_de0'],
-                                         Tcmb0=params['temp_cmb'],
-                                         Neff=params['nu_eff'],
-                                         m_nu=[m_nu1, m_nu2, m_nu3]*units.eV)
+        if cosmo is None:
+            self.model = cosmology.LambdaCDM(
+                H0=100*units.km/(units.Mpc*units.s), Om0=0.307, Ob0=0.0486, Ode0=0.693,
+                Tcmb0=2.725, Neff=3.05, m_nu=[0., 0., 0.06]*units.eV)
+        else:
+            params = {}
+            for key, val in cosmo.items():
+                params[key] = float(val)
+            m_nu1 = params['m_nu1']
+            m_nu2 = params['m_nu2']
+            m_nu3 = params['m_nu3']
+            self.model = cosmology.LambdaCDM(H0=params['hubble0']*units.km/(units.Mpc*units.s),
+                                             Om0=params['omega_m0'],
+                                             Ob0=params['omega_b0'],
+                                             Ode0=params['omega_de0'],
+                                             Tcmb0=params['temp_cmb'],
+                                             Neff=params['nu_eff'],
+                                             m_nu=[m_nu1, m_nu2, m_nu3]*units.eV)
 
         # Set up redshift-comoving table
         self.__set_comoving_table()

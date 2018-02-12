@@ -2,12 +2,18 @@
 
 import sys
 import glob
-
 import pickle
+
+import numpy
+
+from lib.correlation import Correlation
+
 
 def main():
     """ Main
     Args: output prefix """
+    print("COMBINE module")
+
     prefix = sys.argv[1]
 
     # Read in helper from pickles
@@ -27,16 +33,17 @@ def main():
     data_data = helper.get_dd()
     data_rand = helper.get_dr()
     rand_rand = helper.get_rr()
-    bins_s = helper.bins.bins('s')
-    bins_s = 0.5*(bins_s[:-1]+bins_s[1:])
-    norm = helper.norm
 
-    for i in range(2):
-        data_data[i] = data_data[i]/norm['dd'][i]
-        data_rand[i] = data_rand[i]/norm['dr'][i]
-        rand_rand[i] = rand_rand[i]/norm['rr'][i]
+    # Set up and calculate correlation function
+    tpcf = Correlation(data_data, data_rand, rand_rand, helper.bins.bins('s'), helper.norm)
 
-
+    # Save into NPZ files
+    numpy.savez("{}_weighted.npz".format(prefix),
+                bins=tpcf.bins, tpcf=tpcf.tpcf(), tpcfss=tpcf.tpcfss(),
+                dd=tpcf.w_distr['dd'], rr=tpcf.w_distr['rr'], dr=tpcf.w_distr['dr'])
+    numpy.savez("{}_unweighted.npz".format(prefix),
+                bins=tpcf.bins, tpcf=tpcf.tpcf(False), tpcfss=tpcf.tpcfss(False),
+                dd=tpcf.u_distr['dd'], rr=tpcf.u_distr['rr'], dr=tpcf.u_distr['dr'])
 
 if __name__ == "__main__":
     main()

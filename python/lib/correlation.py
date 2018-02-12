@@ -4,15 +4,29 @@ import numpy
 
 class Correlation(object):
     """ Class to handle correlation function """
-    def __init__(self, rand_rand, data_data, data_rand, bins):
-        """ Constructor """
-        self.rand_rand = rand_rand
-        self.data_data = data_data
-        self.data_rand = data_rand
+    def __init__(self, data_data, data_rand, rand_rand, bins, norm):
+        """ Constructor sets up normalized DD, DR, RR from unnormalized"""
         self.bins = bins
 
-    def error(self, w_dist, uw_dist):
-        """ Get bin error of separation distribution
+        # Initialize separation distribution and its statistical errors
+        self.w_distr = {}
+        self.u_distr = {}
+
+        # Set statistical errors
+        keys = ('dd', 'dr', 'rr')
+        for i, distr in enumerate((data_data, data_rand, rand_rand)):
+            distr_err = self.distr_error(distr[0], distr[1])
+            self.w_distr[keys[i]] = [distr[0], distr_err[0]]
+            self.u_distr[keys[i]] = [distr[1], distr_err[1]]
+
+        # Normalize and set separation distribution
+        for i, distr in enumerate((self.w_distr, self.u_distr)):
+            for key in keys:
+                distr[key][0] = distr[key][0]/norm[key][i]
+                distr[key][1] = distr[key][1]/norm[key][i] # propagate error
+
+    def distr_error(self, w_distr, uw_distr):
+        """ Get statistical bin error of separation distribution
         Inputs:
         + w_dist: ndarray
             Weighted distribution
@@ -21,27 +35,37 @@ class Correlation(object):
         Outputs:
         + error: ndarray
             Bin errors """
-        uw_error = numpy.sqrt(uw_dist)
-        w_error = numpy.where(uw_error != 0, w_dist/uw_error, 0.)
-        error = numpy.array([w_error, uw_error]).T
-        return error
+        uw_err = numpy.sqrt(uw_distr)
+        w_err = numpy.where(uw_err != 0, w_distr/uw_err, 0.)
+        return w_err, uw_err
 
-    def tpcf(self):
-        """ Calculate two-point correlation
+    def tpcf(self, weighted=True):
+        """ Calculate two-point correlation and its error
         Outputs:
-        + correlation: ndarray
+        + tpcf: ndarray
             Two-point correlation function
-            Equation: (DD-2DR+RR)/RR """
+            Equation: (DD-2DR+RR)/RR
+        + tpcf_err ndarray
+            Statistical error of two-point correlation function """
+        distr = self.w_distr if weighted else self.u_distr
 
-        tpcf = self.data_data-2*self.data_rand+self.rand_rand
-        tpcf = numpy.where(self.rand_rand != 0, tpcf/self.rand_rand, 0.)
-        return tpcf
+        # Calculate tpcf
+        tpcf = distr['dd'][0]-2*distr['dr'][0]+distr['rr'][0]
+        tpcf = numpy.where(distr['rr'][0] != 0, tpcf/distr['rr'][0], 0.)
 
-    def tpcfss(self):
-        """ Calculate two-point correlation s^2
+        # Calculate error of tpcf
+        tpcf_err = distr['dd'][1]**2+4*(distr['dr'][1])**2
+        tpcf_err += (distr['rr'][1]*(2*distr['dr'][0]-distr['dd'][0]))**2/distr['rr'][0]**2
+        tpcf_err *= 1./distr['rr'][0]**2
+        tpcf_err = numpy.sqrt(tpcf_err)
+        return tpcf, tpcf_err
+
+    def tpcfss(self, weighted=True):
+        """ Calculate two-point correlation s^2 and its error
         Outputs:
-        + correlation: ndarray
+        + tpcfss: ndarray
             Two-point correlation function s^2
             Equation: s^2*(DD-2DR+RR)/RR """
         s = (self.bins[1:]+self.bins[:-1])/2.
-        return self.tpcf()*s**2
+        tpcf, tpcf_err = self.tpcf(weighted)
+        return tpcf*s**2, tpcf_err*s**2

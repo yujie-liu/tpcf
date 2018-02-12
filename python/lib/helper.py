@@ -19,14 +19,14 @@ class JobHelper(object):
             self.current_job += 1
         else:
             print('Already at last job index.')
-        print("Job number: {}. Total jobs: {}.".format(self.current_job, self.total_jobs))
+        print("Job number: {}. Total jobs: {}".format(self.current_job, self.total_jobs))
 
     def set_current_job(self, current_job):
         """ Set current job index to input """
         if current_job < 0 or current_job >= self.total_jobs:
             raise ValueError('Job must be at least 0 and less than total job.')
         self.current_job = current_job
-        print("Job number: {}. Total jobs: {}.".format(self.current_job, self.total_jobs))
+        print("Job number: {}. Total jobs: {}".format(self.current_job, self.total_jobs))
 
     def get_index_range(self, size):
         """ Calculate the start and end indices given job size
@@ -78,6 +78,16 @@ class Bins(object):
         self.num_bins = {}
         self.set_nbins(binw)
 
+    def __eq__(self, other):
+        """ Comparing one bins with other """
+        for key, val in self.limit.items():
+            if val != other.limit[key]:
+                return False
+        for key, val in self.num_bins.items():
+            if val != other.num_bins[key]:
+                return False
+        return True
+
     def set_nbins(self, binw):
         """ Set up number of bins """
 
@@ -115,9 +125,9 @@ class Bins(object):
     def default_binw(self, key, binw_r=None, binw_s=None):
         """ Return the default binwidth """
         if key in ['dec', 'ra', 'theta']:
-            binw = 1.*binw_r/self.limit['r'][1]
+            binw = 1.*binw_r/self.max('r')
         elif key == 'r':
-            binw = 0.25*binw_s
+            binw = 0.5*binw_s
         else:
             raise ValueError('Valid key: "dec", "ra", "theta", "r"')
         return binw
@@ -133,6 +143,10 @@ class Bins(object):
     def nbins(self, key):
         """ Return number of bins """
         return self.num_bins[key]
+
+    def binw(self, key):
+        """ Return binwidth """
+        return (self.max(key)-self.min(key))/self.nbins(key)
 
     def bins(self, key):
         """ Return uniform binning """
@@ -196,11 +210,17 @@ class CorrelationHelper(object):
 
     def get_dd(self):
         """ Return DD(s) """
+        if self.n < self.ntotal:
+            raise RuntimeError("Insufficient jobs!")
+
         print("Calculate DD(s)")
         return self.data_data
 
-    def get_rr(self):
+    def get_rr(self, cosmo=None):
         """ Calculate and return RR(s) """
+        if self.n < self.ntotal:
+            raise RuntimeError("Insufficient jobs!")
+
         print("Calculate RR(s)")
 
         # Initialize separation distribution and binning
@@ -208,7 +228,9 @@ class CorrelationHelper(object):
 
         # Set up PDF maps and bins
         bins_theta = self.bins.bins('theta')
-        bins_r = self.bins.bins('r')
+        if cosmo is not None:
+            bins_z = self.bins.bins('z')
+            bins_r = cosmo.z2r(bins_z)
         bins = [bins_theta, bins_r, bins_r]
 
         w_maps = [self.theta_distr, self.r_distr[0], self.r_distr[0]]
@@ -224,8 +246,11 @@ class CorrelationHelper(object):
 
         return rand_rand
 
-    def get_dr(self):
+    def get_dr(self, cosmo=None):
         """ Calculate and return DR(s) """
+        if self.n < self.ntotal:
+            raise RuntimeError("Insufficient jobs!")
+
         print("Calculate DR(s)")
 
         # Initialize separation distribution and binning
@@ -233,7 +258,9 @@ class CorrelationHelper(object):
 
         # Set up PDF maps and bins
         bins_theta = self.bins.bins('theta')
-        bins_r = self.bins.bins('r')
+        if cosmo is not None:
+            bins_z = self.bins.bins('z')
+            bins_r = cosmo.z2r(bins_z)
         bins = [bins_theta, bins_r, bins_r]
 
         # Calculate weighted distribution

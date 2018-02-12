@@ -20,7 +20,7 @@ class DataCatalog(object):
             Key: dec, ra, r
         + cosmo: cosmology.Cosmology
             Cosmology object to convert redshift to comoving distance."""
-        self.ndata = 0
+        self.ntotal = 0
         self.catalog = None
         self.set_catalog(reader, cosmo)
         if limit is not None:
@@ -308,6 +308,7 @@ class DistrCatalog(object):
 
         # Read from NPZ catalog file
         if reader is not None:
+            print('Import catalog from NPZ: {}'.format(reader['path']))
             with numpy.load(reader['path']) as f:
                 self.r_distr = f[reader['r_distr']]
                 self.angular_distr = f[reader['angular_distr']]
@@ -418,14 +419,14 @@ class DistrCatalog(object):
 
         # Get start and end indices
         if mode == "angular_tree":
-            start, end = job_helper.get_index_range(data_catalog.ntotal)
+            start, end = job_helper.get_index_range(data_catalog.shape[0])
         elif mode == "data_tree":
             start, end = job_helper.get_index_range(self.angular_distr.shape[0])
 
 
         print("Construct angular-comoving from index {} to {}".format(start, end-1))
         if mode == "angular_tree":
-            for i, point in enumerate(data_catalog.catalog[start:end]):
+            for i, point in enumerate(data_catalog[start:end]):
                 if i % 10000 is 0:
                     print(i)
 
@@ -452,10 +453,10 @@ class DistrCatalog(object):
 
                 index, theta = balltree.query_radius(
                     point[:2].reshape(1, -1), r=theta_max, return_distance=True)
-                r = data_catalog.catalog[:, 2][index[0]]
+                r = data_catalog[:, 2][index[0]]
 
                 # Fill weighted histogram
-                weights = point[2]*data_catalog.catalog[:, 3][index[0]]
+                weights = point[2]*data_catalog[:, 3][index[0]]
                 hist, _, _ = numpy.histogram2d(
                     theta[0], r, bins=(nbins_theta, nbins_r), range=limit, weights=weights)
                 r_theta_distr[0] += hist
@@ -468,14 +469,14 @@ class DistrCatalog(object):
 
         return r_theta_distr
 
-    def r_theta_distr(self, data_catalog, theta_max, nbins_theta, job_helper=None, leaf=40):
+    def r_theta_distr(self, data, theta_max, nbins_theta, job_helper=None, mode=None, leaf=40):
         """ Calculate comoving-angular distribution.
         Use a modified nearest-neighbors BallTree algorithm to calculate
         angular distance up to a given angle. Metric = 'haversine'.
         NOTE: assume self.bins_r is uniformed
         Inputs:
-        + data_catalog: DataCatalog
-            Data catalog to pair with
+        + data: DataCatalog
+            Data catalog object to pair with
         + theta_max: float
             Maximum angular separation
         + nbins_theta: int
@@ -488,19 +489,24 @@ class DistrCatalog(object):
             except in the case that n_samples < leaf_size.
             More details can be found at sklearn.neightbors.BallTree.
         Outputs:
-        + theta_distr: ndarray
-            Angular separation distribution
+        + r_theta_distr: ndarray
+            Angular-comoving distribution
         + bins: ndarray
-            Binedges of distribution. """
+            Binedges of angular-comoving distribution (bins_theta, bins_r). """
 
         # Runtime is O(N*log(M)); M = size of tree; N = size of catalog
         # Create tree from catalog with smaller size
-        if self.angular_distr.shape[0] >= data_catalog.ntotal:
-            mode = "angular_tree"
+        if mode is None:
+            if self.angular_distr.shape[0] >= data.ntotal:
+                mode = "angular_tree"
+                balltree = BallTree(self.angular_distr[:, :2], leaf_size=leaf, metric='haversine')
+            else:
+                mode = "data_tree"
+                balltree = BallTree(data.catalog[:, :2], leaf_size=leaf, metric='haversine')
+        elif mode == "data_tree":
+            balltree = BallTree(data.catalog[:, :2], leaf_size=leaf, metric='haversine')
+        elif mode == "angular_tree":
             balltree = BallTree(self.angular_distr[:, :2], leaf_size=leaf, metric='haversine')
-        else:
-            mode = "data_tree"
-            balltree = BallTree(data_catalog.catalog[:, :2], leaf_size=leaf, metric='haversine')
 
         # If job_helper is None, assume one job
         if job_helper is None:
@@ -508,97 +514,7 @@ class DistrCatalog(object):
             job_helper.set_current_job(0)
 
         r_theta_distr = self._r_theta_distr_thread(
-            theta_max, nbins_theta, data_catalog, balltree, job_helper, mode)
+            theta_max, nbins_theta, data.catalog, balltree, job_helper, mode)
         bins_theta = numpy.linspace(0., theta_max, nbins_theta)
 
         return r_theta_distr, bins_theta, self.bins_r
-
-    def s_distr(self, s_max, nbins_s, theta_max, nbins_theta, theta_distr=None):
-        """ Calculate pairwise separation distribution
-        Inputs:
-        + s_max: float
-            Separation distribution
-        + nbins_s: int
-            Number of bins of separation distribution
-        + theta_max: float
-            Maximum angular separation
-        + nbins_theta: int
-            Number of bins of angular separation distribution
-        + theta_distr: ndarray (default=None)
-            Angular separation distribution. If None, calculate one  theta_max and nbins_theta
-        Outputs:
-        + s_distr: ndarray
-            Return weighted and unweighted distribution
-        + bins_s: array
-            Binedges of distribution
-        """
-
-        # Calculate angular separation distribution and binning
-        bins_theta = numpy.linspace(0., theta_max, nbins_theta+1)
-        if theta_distr is None:
-            theta_distr, bins_theta = self.theta_distr(theta_max, nbins_theta)
-
-        # Initialize separation distribution and binning
-        bins_s = numpy.linspace(0., s_max, nbins_s+1)
-        s_distr = numpy.zeros((2, nbins_s))
-
-        # Set up PDF maps and bins
-        bins = [bins_theta, self.bins_r, self.bins_r]
-        w_maps = [theta_distr, self.r_distr[0], self.r_distr[0]]
-        uw_maps = [theta_distr, self.r_distr[1], self.r_distr[1]]
-
-        # Calculate weighted distribution
-        s_distr[0] += special.prob_convolution(w_maps, bins, special.distance, bins_s)
-
-        # Calculate unweighted istribution
-        s_distr[1] += special.prob_convolution(uw_maps, bins, special.distance, bins_s)
-
-        return s_distr, bins
-
-    def cross_s_distr(self, s_max, nbins_s, theta_max, nbins_theta,
-                      r_theta_distr=None, data_catalog=None):
-        """ Calculate cross separation distribution with a pair catalog
-        Inputs:
-        + s_max: float
-            Separation distribution
-        + nbins_s: int
-            Number of bins of separation distribution
-        + theta_max: float
-            Maximum angular separation
-        + nbins_theta: int
-            Number of bins of angular separation distribution
-        + r_theta_distr: ndarray (default=None)
-            Angular separation distribution.
-            If None, calculate using data_catalog, theta_max, and nbins_theta
-        + data_catalog: DataCatalog (default=None)
-            Data catalog to pair with
-        If both r_theta_distr and data_catalog is None, raise ValueError.
-        Outputs:
-        + s_distr: ndarray
-            Return weighted and unweighted distribution
-        + bins_s: array
-            Binedges of distribution """
-
-        # Calculate angular separation distribution and binning
-        bins_theta = numpy.linspace(0., theta_max, nbins_theta+1)
-        if r_theta_distr is None:
-            if data_catalog is None:
-                raise ValueError('Must have either data_catalog or r_theta_distr')
-            r_theta_distr, bins_theta, _ = self.r_theta_distr(data_catalog, theta_max, nbins_theta)
-
-        # Initialize separation distribution and binning
-        bins_s = numpy.linspace(0., s_max, nbins_s+1)
-        cross_s_distr = numpy.zeros((2, nbins_s))
-
-        # Set up PDF maps and bins
-        bins = [bins_theta, self.bins_r, self.bins_r]
-
-        # Calculate weighted distribution
-        cross_s_distr[0] += special.prob_convolution2d(
-            r_theta_distr[0], self.r_distr[0], bins, special.distance, bins_s)
-
-        # Calculate unweighted distribution
-        cross_s_distr[1] += special.prob_convolution2d(
-            r_theta_distr[1], self.r_distr[1], bins, special.distance, bins_s)
-
-        return cross_s_distr, bins_s
