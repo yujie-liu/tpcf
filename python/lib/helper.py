@@ -216,7 +216,7 @@ class CorrelationHelper(object):
         print("Calculate DD(s)")
         return self.data_data
 
-    def get_rr(self, cosmo=None):
+    def get_rr(self):
         """ Calculate and return RR(s) """
         if self.n < self.ntotal:
             raise RuntimeError("Insufficient jobs!")
@@ -228,9 +228,7 @@ class CorrelationHelper(object):
 
         # Set up PDF maps and bins
         bins_theta = self.bins.bins('theta')
-        if cosmo is not None:
-            bins_z = self.bins.bins('z')
-            bins_r = cosmo.z2r(bins_z)
+        bins_r = self.bins.bins('r')
         bins = [bins_theta, bins_r, bins_r]
 
         w_maps = [self.theta_distr, self.r_distr[0], self.r_distr[0]]
@@ -246,7 +244,7 @@ class CorrelationHelper(object):
 
         return rand_rand
 
-    def get_dr(self, cosmo=None):
+    def get_dr(self):
         """ Calculate and return DR(s) """
         if self.n < self.ntotal:
             raise RuntimeError("Insufficient jobs!")
@@ -258,9 +256,7 @@ class CorrelationHelper(object):
 
         # Set up PDF maps and bins
         bins_theta = self.bins.bins('theta')
-        if cosmo is not None:
-            bins_z = self.bins.bins('z')
-            bins_r = cosmo.z2r(bins_z)
+        bins_r = self.bins.bins('r')
         bins = [bins_theta, bins_r, bins_r]
 
         # Calculate weighted distribution
