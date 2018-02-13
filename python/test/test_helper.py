@@ -119,6 +119,7 @@ class TestHelper(unittest2.TestCase):
                                        bins.bins('s'))
 
     def test_correlation_helper(self):
+        """ Test correlation helper """
         pass
 
 
