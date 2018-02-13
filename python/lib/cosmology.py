@@ -9,6 +9,7 @@ two changes:
 2) Allow for the possibile definition of nonzero curvature (not by default).
 """
 
+# Python modules
 import numpy
 from astropy import cosmology, units
 from scipy import interpolate

@@ -1,23 +1,27 @@
-""" Class to read in galaxy catalog """
+""" Module to handle galaxy survey catalogs """
 
+# Python modules
 import numpy
 from astropy.table import Table
 from sklearn.neighbors import KDTree, BallTree
 
-import lib.special as special
+# User-defined modules
+import lib.general as general
 from lib.helper import JobHelper
 
 class DataCatalog(object):
-    """ Class to handle data point catalog """
+    """ Class to handle data point catalogs. Data point catalogs are catalogs that have
+    the coordinates (dec, ra, z) of each data point. """
+
     def __init__(self, reader, limit, cosmo):
-        """ Initialize data point catalog
+        """ Initialize data point catalog.
         Inputs:
         + reader: dict
             Dictionary with path and properties of catalog file.
-            Key: path, dec, ra, z
+            Keys: path, dec, ra, z. Values format: str
         + limit: dict
-            Dctionary with boundaries of catalog
-            Key: dec, ra, r
+            Dictionary with boundaries (inclusive) of catalog. If None, use full catalog.
+            Keys: dec, ra, r. Values format (min, max)
         + cosmo: cosmology.Cosmology
             Cosmology object to convert redshift to comoving distance."""
         self.ntotal = 0
@@ -28,11 +32,11 @@ class DataCatalog(object):
 
     def set_catalog(self, reader, cosmo):
         """ Read in data point catalog from FITS file. Convert redshift to
-        comoving distance
+        comoving distance.
         Inputs:
         + reader: dict
             Dictionary with path and properties of catalog file.
-            Key: path, dec, ra, z
+            Keys: path, dec, ra, z. Values format: str
         + cosmo: cosmology.Cosmology
             Cosmology class to convert redshift to comoving distance."""
 
@@ -60,10 +64,10 @@ class DataCatalog(object):
         """ Set boundaries of catalog
         Inputs:
         + limit: dict
-            Dictionary with boundaries of catalog
-            Key: dec, ra, r """
+            Dictionary with boundaries (inclusive) of catalog
+            Keys: dec, ra, r. Values format: (min, max) """
 
-        # Read limit
+        # Read limit and perform array slicing
         dec, ra, r = self.catalog[:, :3].T
         index = ((limit['dec'][0] <= dec) & (dec <= limit['dec'][1])
                  & (limit['ra'][0] <= ra) & (ra <= limit['ra'][1])
@@ -73,7 +77,7 @@ class DataCatalog(object):
         self.ntotal = self.catalog.shape[0]
 
     def to_distr(self, limit, nbins):
-        """ Convert into DistrCatalog
+        """ Convert into DistrCatalog and return.
         Inputs:
         + limit: list, tuple, ndarray, dict
             Bins range in order 'dec', 'ra', 'r'.
@@ -81,12 +85,6 @@ class DataCatalog(object):
         + nbins: list, tuple, ndarray, dict
             Number of bins in order 'dec', 'ra', 'r'.
             If dict, use values from keys 'dec', 'ra', 'r'
-        + bins_dec: int, list, tuple, ndarray
-            Binning scheme for declination
-        + bins_ra: int, list, tuple, ndarray
-            Binning scheme for right ascension
-        + bins_r: int, list tuple, ndarray
-            Binning scheme for comoving distance
         Outputs:
         + distr_catalog: DistrCatalog
             Distribution catalog """
@@ -109,10 +107,10 @@ class DataCatalog(object):
         angular_distr, bins_dec, bins_ra = self.angular_distr(
             bins_range[:2], num_bins[:2], weighted=False, normed=False)
 
-        # Set up attributes
+        # Set up DistrCatalog attributes
         distr_catalog = DistrCatalog()
         distr_catalog.r_distr = numpy.array([r_distr_w, r_distr_uw])
-        distr_catalog.angular_distr = special.hist2point(angular_distr, bins_dec, bins_ra)
+        distr_catalog.angular_distr = general.hist2point(angular_distr, bins_dec, bins_ra)
         distr_catalog.bins_r = bins_r
         distr_catalog.bins_dec = bins_dec
         distr_catalog.bins_ra = bins_ra
@@ -136,7 +134,7 @@ class DataCatalog(object):
         Outputs:
         + r_distr: ndarray
             Comoving distance distribution
-        + bins_r: ndarray+
+        + bins_r: ndarray
             Comoving distance bins """
         bins_range = limit['r'] if isinstance(limit, dict) else limit
 
@@ -151,7 +149,7 @@ class DataCatalog(object):
         return r_distr, bins_r
 
     def angular_distr(self, limit, nbins, weighted=False, normed=False):
-        """ Calculate angular distribution
+        """ Calculate angular distribution.
         Inputs:
         + limit: list, tupple, ndarray, dict
             Bins range in order 'dec', 'ra'.
@@ -195,9 +193,9 @@ class DataCatalog(object):
         """ Return unweighted and weighted normalization factor
         for pairwise separation distribution
         Unweighted equation:
-        - norm = 0.5*(ntotal^2-ntotal); ntotal is the size of catalog
+        - norm = 0.5(ntotal^2-ntotal); ntotal is the size of catalog
        Weighted equation:
-        - norm = 0.5*(sum_w^2-sum_w2); sum_w and sum_w2 are the sum of weights and weights squared
+        - norm = 0.5(sum_w^2-sum_w2); sum_w and sum_w2 are the sum of weights and weights squared
         Outputs:
         + w_norm: float
             Weighted normalization factor
@@ -218,7 +216,7 @@ class DataCatalog(object):
         + s_distr: ndarray
             Return weighted and unweighted pairwise separation distribution."""
 
-        # Initialize weighted and unweighted distribution
+        # Initialize weighted (i=0) and unweighted (i=1) distribution
         s_distr = numpy.zeros((2, nbins_s))
 
         # Get start and end indices
@@ -228,9 +226,11 @@ class DataCatalog(object):
         for i, point in enumerate(catalog[start:end]):
             if i % 10000 is 0:
                 print(i)
-            index, s = kdtree.query_radius(point[: 3].reshape(1, -1), r=s_max, return_distance=True)
+            index, s = kdtree.query_radius(point[: 3].reshape(1, -1), r=s_max,
+                                           return_distance=True)
 
             # Fill weighted distribution
+            # weight is the product of the weights of two points
             weights = catalog[:, 3][index[0]]*point[3]
             hist, _ = numpy.histogram(s[0], bins=nbins_s, range=(0., s_max), weights=weights)
             s_distr[0] += hist
@@ -239,10 +239,12 @@ class DataCatalog(object):
             hist, _ = numpy.histogram(s[0], bins=nbins_s, range=(0., s_max))
             s_distr[1] += hist
 
-        # Correction for double counting
-        # sum of w^2
+        # Correction for double counting in the first bin from pairing a galaxy
+        # with itself
         s_distr[0][0] -= numpy.sum(catalog[start:end, 3]**2)
         s_distr[1][0] -= end-start
+
+        # Correction for double counting
         s_distr = s_distr/2.
 
         return s_distr
@@ -269,7 +271,7 @@ class DataCatalog(object):
         + bins: ndarray
             Binedges of distribution.
         """
-        # Convert Celestial coord into Cartesian coord
+        # Convert Celestial coord into Cartesian coord.
         dec, ra, r = self.catalog[:, :3].T
         cart_catalog = numpy.array([r*numpy.cos(dec)*numpy.cos(ra),
                                     r*numpy.cos(dec)*numpy.sin(ra),
@@ -291,14 +293,16 @@ class DataCatalog(object):
 
 
 class DistrCatalog(object):
-    """ Class to handle catalog whose data points are unknown """
+    """ Class to handle distribution catalog. Distribution catalogs are catalogs
+    that does not have the coordinates of each data points, but have the angular and
+    redshift (comoving distribution). """
 
     def __init__(self, reader=None):
         """ Initialize angular and comoving distribution
         Inputs:
         + reader: dict (default=None)
             Dictionary with properties and path to NPZ catalog. If None, only
-            initialize distribution """
+            initialize attributes """
         self.r_distr = None
         self.angular_distr = None
         self.bins_r = None
@@ -323,9 +327,14 @@ class DistrCatalog(object):
         """ Return unweighted and weighted normalization factor
         for pairwise separation distribution
         Unweighted equation:
-        - norm = 0.5*(ntotal^2-ntotal); ntotal is the size of catalog
+        - norm = 0.5(ntotal^2-ntotal); ntotal is the size of catalog
         Weighted equation:
-        - norm = 0.5*(sum_w^2-sum_w2); sum_w and sum_w2 are the sum of weights and weights squared
+        - norm = 0.5(sum_w^2-sum_w2); sum_w and sum_w2 are the sum of weights and weights squared
+        Inputs:
+        + data_catalog: DataCatalog (default=None)
+            If None, calculate the normalization factor for itself (i.e. RR).
+            Otherwise, calculate the normalization factor for correlation distribution
+            with the input catalog (i.e. DR).
         Outputs:
         + w_norm: float
             Weighted normalization factor
@@ -346,8 +355,8 @@ class DistrCatalog(object):
         """ Thread function of self.angular_separation.
         Outputs:
         + theta_distr: ndarray
-            Angular separation distribution.
-        """
+            Angular separation distribution. """
+
         # Initialize angular separation distribution f(theta)
         theta_distr = numpy.zeros(nbins)
 
@@ -361,6 +370,7 @@ class DistrCatalog(object):
             index, theta = balltree.query_radius(point[:2].reshape(1, -1),
                                                  r=theta_max,
                                                  return_distance=True)
+            # weight is the product of the weights of each point
             weights = point[2]*self.angular_distr[:, 2][index[0]]
             hist, _ = numpy.histogram(theta[0], bins=nbins, range=(0., theta_max), weights=weights)
             theta_distr += hist
@@ -419,17 +429,15 @@ class DistrCatalog(object):
 
         # Get start and end indices
         if mode == "angular_tree":
-            start, end = job_helper.get_index_range(data_catalog.shape[0])
+            start, end = job_helper.get_index_range(data_catalog.ntotal)
         elif mode == "data_tree":
             start, end = job_helper.get_index_range(self.angular_distr.shape[0])
-
 
         print("Construct angular-comoving from index {} to {}".format(start, end-1))
         if mode == "angular_tree":
             for i, point in enumerate(data_catalog[start:end]):
                 if i % 10000 is 0:
                     print(i)
-
                 index, theta = balltree.query_radius(
                     point[:2].reshape(1, -1), r=theta_max, return_distance=True)
                 r = numpy.repeat(point[2], index[0].size)
@@ -441,6 +449,8 @@ class DistrCatalog(object):
                 r_theta_distr[1] += hist
 
                 # Fill weighted histogram
+                # weight is the product of the weight of the data point and the weight
+                # of the angular point.
                 weights = weights*point[3]
                 hist, _, _ = numpy.histogram2d(
                     theta[0], r, bins=(nbins_theta, nbins_r), range=limit, weights=weights)
@@ -450,22 +460,23 @@ class DistrCatalog(object):
             for i, point in enumerate(self.angular_distr[start:end]):
                 if i % 10000 is 0:
                     print(i)
-
                 index, theta = balltree.query_radius(
                     point[:2].reshape(1, -1), r=theta_max, return_distance=True)
                 r = data_catalog[:, 2][index[0]]
 
                 # Fill weighted histogram
+                # weight is the product of the weight of the data point and the weight of
+                # the angular point
                 weights = point[2]*data_catalog[:, 3][index[0]]
                 hist, _, _ = numpy.histogram2d(
                     theta[0], r, bins=(nbins_theta, nbins_r), range=limit, weights=weights)
                 r_theta_distr[0] += hist
 
                 # Fill unweighted histogram
-                weights = numpy.repeat(point[2], index[0].size)
+                # weight is the weight of the angular point
                 hist, _, _ = numpy.histogram2d(
-                    theta[0], r, bins=(nbins_theta, nbins_r), range=limit, weights=weights)
-                r_theta_distr[1] += hist
+                    theta[0], r, bins=(nbins_theta, nbins_r), range=limit)
+                r_theta_distr[1] += hist*point[2]
 
         return r_theta_distr
 

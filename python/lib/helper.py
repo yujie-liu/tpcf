@@ -1,8 +1,10 @@
-""" Module with helper class """
+""" Module with helper classes """
 
+# Python modules
 import numpy
 
-import lib.special as special
+# User-defined modules
+import lib.general as general
 
 class JobHelper(object):
     """ Class to handle multiprocess job """
@@ -240,12 +242,12 @@ class CorrelationHelper(object):
         uw_maps = [self.theta_distr, self.r_distr[1], self.r_distr[1]]
 
         # Calculate weighted distribution
-        rand_rand[0] += special.prob_convolution(
-            w_maps, bins, special.distance, self.bins.bins('s'))
+        rand_rand[0] += general.prob_convolution(
+            w_maps, bins, general.distance, self.bins.bins('s'))
 
         # Calculate unweighted istribution
-        rand_rand[1] += special.prob_convolution(
-            uw_maps, bins, special.distance, self.bins.bins('s'))
+        rand_rand[1] += general.prob_convolution(
+            uw_maps, bins, general.distance, self.bins.bins('s'))
 
         return rand_rand
 
@@ -265,11 +267,11 @@ class CorrelationHelper(object):
         bins = [bins_theta, bins_r, bins_r]
 
         # Calculate weighted distribution
-        data_rand[0] += special.prob_convolution2d(
-            self.r_theta_distr[0], self.r_distr[0], bins, special.distance, self.bins.bins('s'))
+        data_rand[0] += general.prob_convolution2d(
+            self.r_theta_distr[0], self.r_distr[0], bins, general.distance, self.bins.bins('s'))
 
         # Calculate unweighted distribution
-        data_rand[1] += special.prob_convolution2d(
-            self.r_theta_distr/[1], self.r_distr[1], bins, special.distance, self.bins.bins('s'))
+        data_rand[1] += general.prob_convolution2d(
+            self.r_theta_distr/[1], self.r_distr[1], bins, general.distance, self.bins.bins('s'))
 
         return data_rand

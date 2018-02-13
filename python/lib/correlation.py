@@ -1,5 +1,6 @@
 """ Module to handle correlation function """
 
+# Python modules
 import numpy
 
 class Correlation(object):
@@ -50,13 +51,17 @@ class Correlation(object):
         distr = self.w_distr if weighted else self.u_distr
 
         # Calculate tpcf
+        # tpcf = (dd-2dr+rr)/rr
         tpcf = distr['dd'][0]-2*distr['dr'][0]+distr['rr'][0]
         tpcf = numpy.where(distr['rr'][0] != 0, tpcf/distr['rr'][0], 0.)
 
         # Calculate error of tpcf
+        # err^2 = (err_dd^2 + 4*err_dr^2 + (err_rr*(2dr-dd))^2/rr^2)/rr^2
         tpcf_err = distr['dd'][1]**2+4*(distr['dr'][1])**2
-        tpcf_err += (distr['rr'][1]*(2*distr['dr'][0]-distr['dd'][0]))**2/distr['rr'][0]**2
-        tpcf_err *= 1./distr['rr'][0]**2
+        tpcf_err += numpy.where(
+            distr['rr'] != 0,
+            (distr['rr'][1]*(2*distr['dr'][0]-distr['dd'][0]))**2/distr['rr'][0]**2, 0)
+        tpcf_err = numpy.where(distr['rr'][0], tpcf_err/distr['rr'][0]**2, 0.)
         tpcf_err = numpy.sqrt(tpcf_err)
         return tpcf, tpcf_err
 
