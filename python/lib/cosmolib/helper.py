@@ -36,9 +36,6 @@ class JobHelper(object):
         Outputs:
         + job_range: tuple
             Return the start and end indices """
-        if size < self.total_jobs:
-            raise ValueError('Size must be at least total jobs.')
-
         job_index = numpy.floor(numpy.linspace(0, size, self.total_jobs+1))
         job_index = job_index.astype(int)
         job_range = (job_index[self.current_job], job_index[self.current_job+1])
@@ -46,7 +43,7 @@ class JobHelper(object):
 
 class Bins(object):
     """ Class to handle uniform binnings """
-    def __init__(self, limit, binw, cosmo):
+    def __init__(self, limit, binw):
         """ Constructor sets up number of bins and bins range
         Inputs:
         + limit: dict
@@ -54,9 +51,7 @@ class Bins(object):
             Key: dec_min, dec_max, ra_min, ra_max, z_min, z_max
         + binw: dict
             Dictionary with binwidth
-            Key: path, dec, ra, z
-        + cosmo: cosmology.Cosmology
-            Cosmology object to convert redshift to comoving distance"""
+            Key: path, dec, ra, z """
 
         # Set bin range
         limit_d = {}
@@ -65,9 +60,6 @@ class Bins(object):
             # redshift limit to comoving distance
             if key in ['dec_min', 'dec_max', 'ra_min', 'ra_max', 'theta_max']:
                 limit_d[key] = numpy.deg2rad(float(val))
-            elif key in ['z_min', 'z_max']:
-                key = 'r' + key[1:]
-                limit_d[key] = cosmo.z2r(float(val))
             else:
                 limit_d[key] = float(val)
         self.limit = {}
@@ -75,7 +67,7 @@ class Bins(object):
         self.limit['theta'] = [0., limit_d['theta_max']]
         self.limit['dec'] = [limit_d['dec_min'], limit_d['dec_max']]
         self.limit['ra'] = [limit_d['ra_min'], limit_d['ra_max']]
-        self.limit['r'] = [limit_d['r_min'], limit_d['r_max']]
+        self.limit['z'] = [limit_d['z_min'], limit_d['z_max']]
 
         # Set number of bins
         self.num_bins = {}
@@ -93,30 +85,12 @@ class Bins(object):
 
     def set_nbins(self, binw):
         """ Set up number of bins """
-
-        # separation (Mpc/h)
-        binw_s = float(binw['s'])
-        nbins, binw_s = self._get_nbins(self.limit['s'][0], self.limit['s'][1], binw_s)
-        self.num_bins['s'] = nbins
-
-        # comoving distance (Mpc/h)
-        binw_r = binw['r']
-        if binw_r == 'auto':
-            binw_r = self.default_binw('r', binw_s=binw_s)
-        else:
-            binw_r = float(binw_r)
-        nbins, binw_r = self._get_nbins(self.limit['r'][0], self.limit['r'][1], binw_r)
-        self.num_bins['r'] = nbins
-
-        # angular variables (rad)
         for key, val in binw.items():
+            binw = float(val)
             if key in ['dec', 'ra', 'theta']:
-                if val == 'auto':
-                    binw_angle = self.default_binw(key, binw_r=binw_r)
-                else:
-                    binw_angle = numpy.deg2rad(float(val))
-                nbins, _ = self._get_nbins(self.limit[key][0], self.limit[key][1], binw_angle)
-                self.num_bins[key] = nbins
+                binw = numpy.deg2rad(binw)
+            nbins, _ = self._get_nbins(self.limit[key][0], self.limit[key][1], binw)
+            self.num_bins[key] = nbins
 
     def _get_nbins(self, x_min, x_max, binwidth):
         """ Return number of bins given min, max and binw.
@@ -124,18 +98,6 @@ class Bins(object):
         nbins = int(numpy.ceil((x_max-x_min)/binwidth))
         binw = (x_max-x_min)/nbins
         return nbins, binw
-
-    def default_binw(self, key, binw_r=None, binw_s=None):
-        """ Return the default binwidth """
-        if key in ['dec', 'ra', 'theta']:
-            binw = 1.*binw_r/self.max('r')
-        elif key == 'r':
-            binw = 0.5*binw_s
-        elif key == 's':
-            binw = 2.
-        else:
-            raise ValueError('Valid key: "dec", "ra", "theta", "r"')
-        return binw
 
     def min(self, key):
         """ Return binning lower bound """
@@ -221,7 +183,7 @@ class CorrelationHelper(object):
         print("Calculate DD(s)")
         return self.data_data
 
-    def get_rr(self):
+    def get_rr(self, cosmo):
         """ Calculate and return RR(s) """
         if self.n < self.ntotal:
             raise RuntimeError("Insufficient jobs!")
@@ -233,7 +195,8 @@ class CorrelationHelper(object):
 
         # Set up PDF maps and bins
         bins_theta = self.bins.bins('theta')
-        bins_r = self.bins.bins('r')
+        bins_z = self.bins.bins('z')
+        bins_r = cosmo.z2r(bins_z)
         bins = [bins_theta, bins_r, bins_r]
 
         w_maps = [self.theta_distr, self.r_distr[0], self.r_distr[0]]
@@ -249,7 +212,7 @@ class CorrelationHelper(object):
 
         return rand_rand
 
-    def get_dr(self):
+    def get_dr(self, cosmo):
         """ Calculate and return DR(s) """
         if self.n < self.ntotal:
             raise RuntimeError("Insufficient jobs!")
@@ -261,7 +224,8 @@ class CorrelationHelper(object):
 
         # Set up PDF maps and bins
         bins_theta = self.bins.bins('theta')
-        bins_r = self.bins.bins('r')
+        bins_z = self.bins.bins('z')
+        bins_r = cosmo.z2r(bins_z)
         bins = [bins_theta, bins_r, bins_r]
 
         # Calculate weighted distribution
@@ -270,6 +234,6 @@ class CorrelationHelper(object):
 
         # Calculate unweighted distribution
         data_rand[1] += special.prob_convolution2d(
-            self.r_theta_distr/[1], self.r_distr[1], bins, special.distance, self.bins.bins('s'))
+            self.r_theta_distr[1], self.r_distr[1], bins, special.distance, self.bins.bins('s'))
 
         return data_rand

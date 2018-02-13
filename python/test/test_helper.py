@@ -96,6 +96,15 @@ class TestHelper(unittest2.TestCase):
         self.assertAlmostEqual(bins.binw('s'), 4.0)
         self.assertAlmostEqual(bins.binw('theta'), 0.0017453292519943294)
 
+        # Test default binning
+        print("- Default binwidth scheme test")
+        self.assertEqual(bins.default_binw('s'), 2.00)
+        true_angle = 0.9989528621782366/1748.1408115843535
+        self.assertEqual(bins.default_binw('ra', binw_r=0.9989528621782366), true_angle)
+        self.assertEqual(bins.default_binw('dec', binw_r=0.9989528621782366), true_angle)
+        self.assertEqual(bins.default_binw('theta', binw_r=0.9989528621782366), true_angle)
+        self.assertEqual(bins.default_binw('r', binw_s=2.00), 1.00)
+
         # Test bins range
         print("- Get bins test")
         np.testing.assert_almost_equal(np.linspace(np.deg2rad(110.), np.deg2rad(260.), 601),
