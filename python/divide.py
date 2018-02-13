@@ -1,6 +1,6 @@
 """ Script for submitting jobs to calculate DD(s), DR(s), and RR(s) """
 
-# Python modules
+# Standard Python modules
 import sys
 import configparser
 import pickle
@@ -99,7 +99,7 @@ def main():
         save_object.set_bins(bins)
         save_object.set_norm(data.norm(), rand.norm(data), rand.norm())
 
-    pickle_out = open("{}_{:03d}.pickle".format(prefix, no_job), "wb")
+    pickle_out = open("{}_{:03d}.pkl".format(prefix, no_job), "wb")
     pickle.dump(save_object, pickle_out, protocol=-1)
     pickle_out.close()
 

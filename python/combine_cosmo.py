@@ -1,14 +1,13 @@
 """ Script for combining job results and calculate DD(s), DR(s), and RR(s) """
 
-# Standard Python modules
 import sys
 import glob
 import pickle
+import configparser
 
-# Python modules
 import numpy
 
-# User-defined modules
+from lib.cosmology import Cosmology
 from lib.correlation import Correlation
 
 
@@ -16,8 +15,8 @@ def main():
     """ Main
     Args: output prefix """
     print("COMBINE module")
-
-    prefix = sys.argv[1]
+    config_fname = sys.argv[1]
+    prefix = sys.argv[2]
 
     # Read in helper from pickles
     fname_list = sorted(glob.glob("{}*.pkl".format(prefix)))
@@ -30,12 +29,18 @@ def main():
             pickle_in.close()
             continue
         helper = pickle.load(pickle_in)
+        data  = pickle.load(pickle_in)
         pickle_in.close()
 
+    # Set cosmology
+    config = configparser.SafeConfigParser()
+    config.read(config_fname)
+    cosmo = Cosmology(config['COSMOLOGY'])
+
     # Calculate DD, DR, RR
-    data_data = helper.get_dd()
-    data_rand = helper.get_dr()
-    rand_rand = helper.get_rr()
+    data_data, _ = data.s_distr(helper.bins.max('s'), helper.bins.nbins('s'), cosmo)
+    data_rand = helper.get_dr(cosmo)
+    rand_rand = helper.get_rr(cosmo)
 
     # Set up and calculate correlation function
     tpcf = Correlation(data_data, data_rand, rand_rand, helper.bins.bins('s'), helper.norm)

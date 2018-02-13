@@ -34,7 +34,7 @@ def initialize_catalog(config_fname):
         # Import randoms catalog as pickles
         pickle_in = open(config['RANDOM']['path'], 'rb')
 
-        # Comparing two bins value
+        # Comparing two binning scheme
         test_bins = pickle.load(pickle_in)
         if not bins == test_bins:
             raise RuntimeError("Bins do not match.")
@@ -46,7 +46,6 @@ def initialize_catalog(config_fname):
     else:
         raise ValueError('TYPE must be "data_catalog", "distr_catalog", or "pickle"')
     data_catalog = DataCatalog(config['GALAXY'], bins.limit)
-
 
     return data_catalog, rand_catalog, bins
 
@@ -91,7 +90,7 @@ def main():
         save_object.set_bins(bins)
         save_object.set_norm(data.norm(), rand.norm(data), rand.norm())
 
-    pickle_out = open("{}_{:03d}.pickle".format(prefix, no_job), "wb")
+    pickle_out = open("{}_{:03d}.pkl".format(prefix, no_job), "wb")
     pickle.dump(save_object, pickle_out, protocol=-1)
     if no_job == 0:
         pickle.dump(data, pickle_out, protocol=-1) # save data catalog
