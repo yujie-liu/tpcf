@@ -4,7 +4,7 @@ import numpy
 from astropy.table import Table
 from sklearn.neighbors import KDTree, BallTree
 
-import lib.special as special
+import lib.general as general
 from lib.helper import JobHelper
 
 class DataCatalog(object):
@@ -110,7 +110,7 @@ class DataCatalog(object):
         # Set up attributes
         distr_catalog = DistrCatalog()
         distr_catalog.z_distr = numpy.array([z_distr_w, z_distr_uw])
-        distr_catalog.angular_distr = special.hist2point(angular_distr, bins_dec, bins_ra)
+        distr_catalog.angular_distr = general.hist2point(angular_distr, bins_dec, bins_ra)
         distr_catalog.bins_z = bins_z
         distr_catalog.bins_dec = bins_dec
         distr_catalog.bins_ra = bins_ra

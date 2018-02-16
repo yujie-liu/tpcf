@@ -49,13 +49,13 @@ class DataCatalog(object):
         ra = numpy.deg2rad(table[reader['ra']].data)
         r = cosmo.z2r(table[reader['z']].data)
         try:
+            w = table[reader['weight']]
+        except KeyError:
             w_fkp = table[reader['weight_fkp']].data
             w_noz = table[reader['weight_noz']].data
             w_cp = table[reader['weight_cp']].data
             w_sdc = table[reader['weight_sdc']].data
             w = w_sdc*w_fkp*(w_noz+w_cp-1)
-        except KeyError:
-            w = table[reader['weight']]
 
         self.catalog = numpy.array([dec, ra, r, w]).T
         self.ntotal = self.catalog.shape[0]

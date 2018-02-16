@@ -61,27 +61,31 @@ def main():
     """ Main
     Cmd arguments are job number, total number of jobs, configuration file,
     and output prefix
-      + Job number: Job number must be an integer from 0 to total_job-1.
-      + Total jobs: Total number of jobs that will be submitted.
-      + Configuration: Setting for correlation function. See below.
-      + Prefix: Prefix of the output files (can include folder path, folder must
+      + --ijob: Job number must be an integer from 0 to total_job-1.
+      + --njob: Total number of jobs that will be submitted.
+      + --config: Setting for correlation function. See below.
+      + --prefix: Prefix of the output files (can include folder path, folder must
       exist).
     If job number is 0, will also save comoving distribution P(r) and
     normalization factor."""
     print("DIVIDE module")
 
     # Read in cmd argument
-    no_job = int(sys.argv[1])
-    total_jobs = int(sys.argv[2])
-    config_fname = sys.argv[3]
-    prefix = sys.argv[4]
+    args = {'--config': None, '--njob': None, '--ijob': None, '--prefix': None}
+    for i in range(len(sys.argv)):
+        arg = sys.argv[i]
+        if arg in args.keys():
+            args[arg] = sys.argv[i+1]
+            print(arg, sys.argv[i+1])
+    args['--njob'] = int(args['--njob'])
+    args['--ijob'] = int(args['--ijob'])
 
     # Set job helper
-    job_helper = JobHelper(total_jobs)
-    job_helper.set_current_job(no_job)
+    job_helper = JobHelper(args['--njob'])
+    job_helper.set_current_job(args['--ijob'])
 
     # Initialize catalog and binnings
-    data, rand, bins = initialize_catalog(config_fname)
+    data, rand, bins = initialize_catalog(args['--config'])
 
     # Calculate DD(s), f(theta), and g(theta, r)
     data_data, _ = data.s_distr(bins.max('s'), bins.nbins('s'), job_helper)
@@ -90,16 +94,16 @@ def main():
         data, bins.max('theta'), bins.nbins('theta'), job_helper)
 
     # Initialize save object
-    save_object = CorrelationHelper(total_jobs)
+    save_object = CorrelationHelper(args['--njob'])
     save_object.set_dd(data_data)
     save_object.set_theta_distr(theta_distr)
     save_object.set_r_theta_distr(r_theta_distr)
-    if no_job == 0:
+    if args['--ijob'] == 0:
         save_object.set_r_distr(rand.r_distr)
         save_object.set_bins(bins)
         save_object.set_norm(data.norm(), rand.norm(data), rand.norm())
 
-    pickle_out = open("{}_{:03d}.pkl".format(prefix, no_job), "wb")
+    pickle_out = open("{}_{:03d}.pkl".format(args['--prefix'], args['--ijob']), "wb")
     pickle.dump(save_object, pickle_out, protocol=-1)
     pickle_out.close()
 

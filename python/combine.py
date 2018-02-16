@@ -17,7 +17,9 @@ def main():
     Args: output prefix """
     print("COMBINE module")
 
-    prefix = sys.argv[1]
+    for i in range(len(sys.argv)):
+        if sys.argv[i] == '--prefix':
+            prefix = sys.argv[i+1]
 
     # Read in helper from pickles
     fname_list = sorted(glob.glob("{}*.pkl".format(prefix)))

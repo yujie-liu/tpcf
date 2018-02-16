@@ -1,9 +1,11 @@
 """ Module to create preprocessed Catalog object"""
 
+# Standard Python module
 import sys
 import pickle
 import configparser
 
+# User-defined module
 from lib.catalog import DataCatalog
 from lib.cosmology import Cosmology
 from lib.helper import Bins
