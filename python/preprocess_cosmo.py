@@ -6,9 +6,8 @@ import configparser
 import argparse
 
 # User-defined module
-from lib.catalog import DataCatalog
-from lib.cosmology import Cosmology
-from lib.helper import Bins, CorrelationHelper
+from lib.cosmolib.catalog import DataCatalog
+from lib.cosmolib.helper import Bins, CorrelationHelper
 
 def save(fname, *save_list):
     """ Pickle a list of objects """
@@ -25,9 +24,10 @@ def main():
     print("PREPROCESS module")
 
     # Read in cmd argument
+    # Read in cmd argument
     parser = argparse.ArgumentParser(description='Preprocess galaxy and random catalogs.')
-    parser.add_argument('-c', '-C', '--config', type=str, help='Path to configuration file.')
-    parser.add_argument('-p', '-P', '--prefix', type=str, help='Output prefix.')
+    parser.add_argument('-c', '--config', type=str, help='Path to configuration file.')
+    parser.add_argument('-p', '--prefix', type=str, help='Output prefix.')
     parser.add_argument('--version', action='version', version='KITCAT 1.0')
     args = parser.parse_args()
 
@@ -35,24 +35,16 @@ def main():
     config = configparser.SafeConfigParser()
     config.read(args.config)
 
-    # Set cosmological model
-    cosmo = Cosmology(config['COSMOLOGY'])
-
     # Set binning schemes
-    bins = Bins(config['LIMIT'], config['BINWIDTH'], cosmo)
+    bins = Bins(config['LIMIT'], config['BINWIDTH'])
 
     # Initialize catalog and save dictionary
     print('Initialize catalog')
-    data = DataCatalog(config['GALAXY'], bins.limit, cosmo) # data catalog
-    rand = DataCatalog(config['RANDOM'], bins.limit, cosmo) # random catalog
+    data = DataCatalog(config['GALAXY'], bins.limit) # data catalog
+    rand = DataCatalog(config['RANDOM'], bins.limit) # random catalog
     rand = rand.to_distr(bins.limit, bins.num_bins)
     save_dict = {'dd': None, 'dr': None, 'rr': None, 'helper': None}
-
-
-    # Create a kd-tree for DD calculation and pickle
-    print('Setting up DD')
-    tree, catalog = data.build_balltree(metric='euclidean', return_catalog=True)
-    save_dict['dd'] = {'tree': tree, 'catalog': catalog}
+    save_dict['dd'] = data
 
     # Create a balltree for f(theta), RR calculation and pickle
     print('Setting up RR')
@@ -73,7 +65,7 @@ def main():
 
     # Save binning
     helper = CorrelationHelper(bins)
-    helper.set_r_distr(rand.r_distr)
+    helper.set_z_distr(rand.z_distr)
     helper.set_norm(norm_dd=data.norm(), norm_dr=rand.norm(data), norm_rr=rand.norm())
     save_dict['helper'] = helper
 

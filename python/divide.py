@@ -1,61 +1,24 @@
 """ Script for submitting jobs to calculate DD(s), DR(s), and RR(s) """
 
 # Standard Python modules
-import sys
-import configparser
 import pickle
+import time
+import argparse
+
+# Python modules
+import numpy
 
 # User-defined modules
-from lib.cosmology import Cosmology
-from lib.catalog import DataCatalog, DistrCatalog
-from lib.helper import Bins, JobHelper, CorrelationHelper
+from lib.helper import JobHelper
 
-
-def initialize_catalog(config_fname):
-    """ Initialize catalog and binning """
-    # Read from configuration file
-    config = configparser.SafeConfigParser()
-    config.read(config_fname)
-
-    # Set cosmology
-    cosmo = Cosmology(config['COSMOLOGY'])
-
-    # Set binnings
-    bins = Bins(config['LIMIT'], config['BINWIDTH'], cosmo)
-
-    # Initialize catalog
-    # Random catalog
-    rand_type = config['RANDOM']['type'].lower()
-    if rand_type == 'data_catalog':
-        # Import randoms catalog as FITS catalog
-        rand_catalog = DataCatalog(config['RANDOM'], bins.limit, cosmo)
-        rand_catalog = rand_catalog.to_distr(bins.limit, bins.num_bins)
-
-    elif rand_type == 'distr_catalog':
-        # Import randoms catalog as NPZ distribution
-        rand_catalog = DistrCatalog(config['RANDOM'])
-
-    elif rand_type == 'pickle':
-        # Import randoms catalog as pickles
-        pickle_in = open(config['RANDOM']['path'], 'rb')
-
-        # Comparing two bins value
-        test_bins = pickle.load(pickle_in)
-        if not bins == test_bins:
-            raise RuntimeError("Bins do not match.")
-
-        print("Import catalog from Pickle: {}".format(config['RANDOM']['path']))
-        rand_catalog = pickle.load(pickle_in)
-        pickle_in.close()
-
-    else:
-        raise ValueError('TYPE must be "data_catalog", "distr_catalog", or "pickle"')
-
-    # Data catalog
-    data_catalog = DataCatalog(config['GALAXY'], bins.limit, cosmo)
-
-    return data_catalog, rand_catalog, bins
-
+def load(fname):
+    """ Load pickle """
+    with open(fname, "rb") as f:
+        while True:
+            try:
+                yield pickle.load(f)
+            except EOFError:
+                break
 
 def main():
     """ Main
@@ -71,40 +34,60 @@ def main():
     print("DIVIDE module")
 
     # Read in cmd argument
-    args = {'--config': None, '--njob': None, '--ijob': None, '--prefix': None}
-    for i in range(len(sys.argv)):
-        arg = sys.argv[i]
-        if arg in args.keys():
-            args[arg] = sys.argv[i+1]
-            print(arg, sys.argv[i+1])
-    args['--njob'] = int(args['--njob'])
-    args['--ijob'] = int(args['--ijob'])
+    parser = argparse.ArgumentParser(description='Divide calculation into multiple parts.')
+    parser.add_argument('-p', '-P', '--prefix', type=str, help='Output prefix.')
+    parser.add_argument('-i', '-I', '--index', type=int, help='Index of job. Start from 0 to N-1.')
+    parser.add_argument('-n', '-N', '--total', type=int, help='Total number of jobs.')
+    parser.add_argument('-t', '-T', '--time', type=bool, default=False, help='Enable save runtime.')
+    parser.add_argument('--version', action='version', version='KITCAT 1.0')
+    args = parser.parse_args()
 
     # Set job helper
-    job_helper = JobHelper(args['--njob'])
-    job_helper.set_current_job(args['--ijob'])
+    job_helper = JobHelper(args.total)
+    job_helper.set_current_job(args.index)
 
-    # Initialize catalog and binnings
-    data, rand, bins = initialize_catalog(args['--config'])
+    # Set timer
+    timer = {'dd': None, 'dr': None, 'rr': None}
 
-    # Calculate DD(s), f(theta), and g(theta, r)
-    data_data, _ = data.s_distr(bins.max('s'), bins.nbins('s'), job_helper)
-    theta_distr, _ = rand.theta_distr(bins.max('theta'), bins.nbins('theta'), job_helper)
-    r_theta_distr, _, _ = rand.r_theta_distr(
-        data, bins.max('theta'), bins.nbins('theta'), job_helper)
+    # Load pickle file
+    loader = next(load('{}_preprocess.pkl'.format(args['--prefix'])))
 
-    # Initialize save object
-    save_object = CorrelationHelper(args['--njob'])
-    save_object.set_dd(data_data)
-    save_object.set_theta_distr(theta_distr)
-    save_object.set_r_theta_distr(r_theta_distr)
-    if args['--ijob'] == 0:
-        save_object.set_r_distr(rand.r_distr)
-        save_object.set_bins(bins)
-        save_object.set_norm(data.norm(), rand.norm(data), rand.norm())
+    # Set correlation helper
+    correlation = loader['helper']
 
-    pickle_out = open("{}_{:03d}.pkl".format(args['--prefix'], args['--ijob']), "wb")
-    pickle.dump(save_object, pickle_out, protocol=-1)
+    # Calculate DD(s)
+    start_time = time.time()
+    tree = loader['dd']['tree']
+    catalog = loader['dd']['catalog']
+    correlation.set_data_data(tree, catalog, job_helper)
+    timer['dd'] = time.time()-start_time
+    print("--- {} seconds ---".format(timer['dd']))
+
+    # Calculate f(theta)
+    start_time = time.time()
+    tree = loader['rr']['tree']
+    catalog = loader['rr']['catalog']
+    correlation.set_theta_distr(tree, catalog, job_helper)
+    timer['rr'] = time.time()-start_time
+    print("--- {} seconds ---".format(timer['rr']))
+
+    # Calculate g(theta, r)
+    start_time = time.time()
+    tree = loader['dr']['tree']
+    data_catalog = loader['dr']['data_catalog']
+    angular_catalog = loader['dr']['angular_catalog']
+    mode = loader['dr']['mode']
+    correlation.set_r_theta_distr(tree, data_catalog, angular_catalog, mode, job_helper)
+    timer['dr'] = time.time()-start_time
+    print("--- {} seconds ---".format(timer['dr']))
+
+    # Save object and timer
+    if args.time is not None:
+        runtime = [timer['rr'], timer['dr'], timer['dd']]
+        numpy.savetxt("{}_timer.txt".format(args.prefix), runtime, header='RR(s)  DR(s)  DD(s)')
+
+    pickle_out = open("{}_divide_{:03d}.pkl".format(args.prefix, args.i), "wb")
+    pickle.dump(correlation, pickle_out, protocol=-1)
     pickle_out.close()
 
 

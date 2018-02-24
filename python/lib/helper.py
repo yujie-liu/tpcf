@@ -161,46 +161,25 @@ class Bins(object):
 
 
 class CorrelationHelper(object):
-    """ Class to handle multiprocess correlation function """
-    def __init__(self, ntotal):
-        """ Constructor set up attributes
-        Inputs:
-        + ntotal:
-            Number of instances to be expected """
-        self.n = 1
-        self.ntotal = ntotal
+    """ Class to handle multiprocess correlation function calculation """
+    def __init__(self, bins):
+        """ Constructor set up attributes """
 
-        # Initialize histogram
-        self.data_data = None
-        self.theta_distr = None
-        self.r_theta_distr = None
-        self.r_distr = None
+        # Initialize binnings
+        self.bins = bins
 
-        # Initialize binnings and normalization
-        self.bins = None
+        # Initalize norm factor
         self.norm = {"dd": None, "dr": None, "rr": None}
 
-    def set_dd(self, data_data):
-        """ Setting up data data """
-        self.data_data = data_data
-
-    def set_theta_distr(self, theta_distr):
-        """ Setting up f(theta) """
-        self.theta_distr = theta_distr
-
-    def set_r_theta_distr(self, r_theta_distr):
-        """ Setting up g(r, theta) """
-        self.r_theta_distr = r_theta_distr
+        # Initialize histogram
+        self.data_data = numpy.zeros((2, self.bins.nbins('s')))
+        self.theta_distr = numpy.zeros(self.bins.nbins('theta'))
+        self.r_theta_distr = numpy.zeros((2, self.bins.nbins('theta'), self.bins.nbins('r')))
+        self.r_distr = None
 
     def set_r_distr(self, r_distr):
         """ Setting up P(r) """
         self.r_distr = r_distr
-
-    def set_bins(self, bins):
-        """ Seeting up binnings """
-        if not isinstance(bins, Bins):
-            raise ValueError("Must be instance of helper.Bins")
-        self.bins = bins
 
     def set_norm(self, norm_dd, norm_dr, norm_rr):
         """ Setting up normalization """
@@ -208,25 +187,176 @@ class CorrelationHelper(object):
         self.norm["dr"] = norm_dr
         self.norm["rr"] = norm_rr
 
+    def set_data_data(self, tree, catalog, job_helper=None):
+        """ Calculate DD(s) using a modified nearest-neighbors kd-tree search.
+        Metric: Euclidean
+        Inputs:
+        + tree: sklearn.neighbors.BallTree or sklearn.neighbors.KDTree
+            KD-tree built from data catalog
+        + catalog: numpy.ndarray
+            Data catalog in KD-tree (with weights)
+        + job_helper: helper.JobHelper (default=None)
+            Job manager to handle multiprocess indices. If None, assume one job. """
+
+        # If job_helper is None, assume one job
+        if job_helper is None:
+            job_helper = JobHelper(1)
+            job_helper.set_current_job(0)
+
+        # Get start and end indices
+        start, end = job_helper.get_index_range(catalog.shape[0])
+
+        s_max = self.bins.max('s')
+        nbins_s = self.bins.nbins('s')
+        print("Calculate DD from index {} to {}".format(start, end-1))
+        for i, point in enumerate(catalog[start:end]):
+            if i % 10000 is 0:
+                print(i)
+            index, s = tree.query_radius(point[: 3].reshape(1, -1), r=s_max,
+                                         return_distance=True)
+
+            # Fill weighted distribution
+            # weight is the product of the weights of two points
+            weights = catalog[:, 3][index[0]]*point[3]
+            hist, _ = numpy.histogram(s[0], bins=nbins_s, range=(0., s_max), weights=weights)
+            self.data_data[0] += hist
+
+            # Fill unweighted distribution
+            hist, _ = numpy.histogram(s[0], bins=nbins_s, range=(0., s_max))
+            self.data_data[1] += hist
+
+        # Correction for double counting in the first bin from pairing a galaxy
+        # with itself
+        self.data_data[0][0] -= numpy.sum(catalog[start:end, 3]**2)
+        self.data_data[1][0] -= end-start
+
+        # Correction for double counting
+        self.data_data = self.data_data/2.
+
+    def set_theta_distr(self, tree, catalog, job_helper=None):
+        """ Calculate f(theta) using a modified nearest-neighbors search BallTree algorithm.
+        Metric = 'haversine'.
+        Inputs:
+        + tree: sklearn.neighbors.BallTree
+            Balltree built from data catalog
+        + catalog: numpy.ndarray
+            Angular catalog in Balltree (with weights)
+        + job_helper: helper.JobHelper (default=None)
+            Job manager to handle multiprocess indices. If None, assume one job."""
+
+        # If job_helper is None, assume one job
+        if job_helper is None:
+            job_helper = JobHelper(1)
+            job_helper.set_current_job(0)
+
+        # Get start and end indices
+        start, end = job_helper.get_index_range(catalog.shape[0])
+
+        theta_max = self.bins.max('theta')
+        nbins_theta = self.bins.nbins('theta')
+        print("Construct f(theta) from index {} to {}".format(start, end-1))
+        for i, point in enumerate(catalog[start:end]):
+            if i % 10000 is 0:
+                print(i)
+            index, theta = tree.query_radius(point[:2].reshape(1, -1),
+                                             r=theta_max,
+                                             return_distance=True)
+            # weight is the product of the weights of each point
+            weights = point[2]*catalog[:, 2][index[0]]
+            hist, _ = numpy.histogram(theta[0], bins=nbins_theta,
+                                      range=(0., theta_max), weights=weights)
+            self.theta_distr += hist
+
+        # Correction for double counting
+        self.theta_distr = self.theta_distr/2.
+
+    def set_r_theta_distr(self, tree, data_catalog, angular_catalog, mode, job_helper=None):
+        """ Calculate g(theta, r) using a modified nearest-neighbors BallTree search/
+        Metric = 'haversine'.
+        NOTE: assume uniformed comoving bins
+        Inputs:
+        Inputs:
+        + tree: sklearn.neighbors.BallTree
+            Balltree built from DEC and RA coordinates
+        + data_catalog: numpy.ndarray
+            Catalog from galaxy data (with weights)
+        + angular_catalog: numpy.ndarray
+            Angular catalog from random data (with weights)
+        + job_helper: helper.JobHelper (default=None)
+            Job manager to handle multiprocess indices. If None, assume one job. """
+
+        # Get start and end indices
+        if mode == "angular_tree":
+            start, end = job_helper.get_index_range(data_catalog.ntotal)
+        elif mode == "data_tree":
+            start, end = job_helper.get_index_range(angular_catalog.shape[0])
+
+        # Initialize some binning variables
+        nbins_r = self.bins.nbins('r')
+        nbins_theta = self.bins.nbins('theta')
+        theta_max = self.bins.max('theta')
+        limit = ((0., theta_max), (self.bins.min('r'), self.bins.max('r')))
+
+        print("Construct angular-comoving from index {} to {}".format(start, end-1))
+        if mode == "angular_tree":
+            for i, point in enumerate(data_catalog[start:end]):
+                if i % 10000 is 0:
+                    print(i)
+                index, theta = tree.query_radius(
+                    point[:2].reshape(1, -1), r=theta_max, return_distance=True)
+                r = numpy.repeat(point[2], index[0].size)
+
+                # Fill unweighted histogram
+                weights = angular_catalog[:, 2][index[0]]
+                hist, _, _ = numpy.histogram2d(
+                    theta[0], r, bins=(nbins_theta, nbins_r), range=limit, weights=weights)
+                self.r_theta_distr[1] += hist
+
+                # Fill weighted histogram
+                # weight is the product of the weight of the data point and the weight
+                # of the angular point.
+                weights = weights*point[3]
+                hist, _, _ = numpy.histogram2d(
+                    theta[0], r, bins=(nbins_theta, nbins_r), range=limit, weights=weights)
+                self.r_theta_distr[0] += hist
+
+        elif mode == "data_tree":
+            for i, point in enumerate(angular_catalog[start:end]):
+                if i % 10000 is 0:
+                    print(i)
+                index, theta = tree.query_radius(
+                    point[:2].reshape(1, -1), r=theta_max, return_distance=True)
+                r = data_catalog[:, 2][index[0]]
+
+                # Fill weighted histogram
+                # weight is the product of the weight of the data point and the weight of
+                # the angular point
+                weights = point[2]*data_catalog[:, 3][index[0]]
+                hist, _, _ = numpy.histogram2d(
+                    theta[0], r, bins=(nbins_theta, nbins_r), range=limit, weights=weights)
+                self.r_theta_distr[0] += hist
+
+                # Fill unweighted histogram
+                # weight is the weight of the angular point
+                hist, _, _ = numpy.histogram2d(
+                    theta[0], r, bins=(nbins_theta, nbins_r), range=limit)
+                self.r_theta_distr[1] += hist*point[2]
+
     def add(self, other):
         """ Add another part """
-        self.n += 1
         self.data_data = self.data_data+other.data_data
         self.theta_distr = self.theta_distr+other.theta_distr
         self.r_theta_distr = self.r_theta_distr+other.r_theta_distr
 
-    def get_dd(self):
+    def get_data_data(self):
         """ Return DD(s) """
-        if self.n < self.ntotal:
-            raise RuntimeError("Insufficient jobs!")
-
         print("Calculate DD(s)")
         return self.data_data
 
-    def get_rr(self):
+    def get_rand_rand(self):
         """ Calculate and return RR(s) """
-        if self.n < self.ntotal:
-            raise RuntimeError("Insufficient jobs!")
+        if self.r_distr is None:
+            return RuntimeError("Comoving distribution is None.")
 
         print("Calculate RR(s)")
 
@@ -251,10 +381,10 @@ class CorrelationHelper(object):
 
         return rand_rand
 
-    def get_dr(self):
+    def get_data_rand(self):
         """ Calculate and return DR(s) """
-        if self.n < self.ntotal:
-            raise RuntimeError("Insufficient jobs!")
+        if self.r_distr is None:
+            raise RuntimeError("Comoving distribution is None.")
 
         print("Calculate DR(s)")
 
@@ -272,6 +402,6 @@ class CorrelationHelper(object):
 
         # Calculate unweighted distribution
         data_rand[1] += general.prob_convolution2d(
-            self.r_theta_distr/[1], self.r_distr[1], bins, general.distance, self.bins.bins('s'))
+            self.r_theta_distr[1], self.r_distr[1], bins, general.distance, self.bins.bins('s'))
 
         return data_rand
