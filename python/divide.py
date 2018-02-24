@@ -50,7 +50,7 @@ def main():
     timer = {'dd': None, 'dr': None, 'rr': None}
 
     # Load pickle file
-    loader = next(load('{}_preprocess.pkl'.format(args['--prefix'])))
+    loader = next(load('{}_preprocess.pkl'.format(args.prefix)))
 
     # Set correlation helper
     correlation = loader['helper']
