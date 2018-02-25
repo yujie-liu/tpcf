@@ -30,7 +30,7 @@ def main():
     parser.add_argument('-c', '-C', '--cosmology', type=str, default=None,
                         help='Path to cosmology configuration file.')
     parser.add_argument('-p', '-P', '--prefix', type=str, help='Output prefix.')
-    parser.add_argument('--version', action='version', version='KITCAT 1.0')
+    parser.add_argument('--version', action='version', version='KITCAT 1.10')
     args = parser.parse_args()
 
     # Read in helper from pickles

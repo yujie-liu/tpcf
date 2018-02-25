@@ -40,7 +40,7 @@ def main():
     parser.add_argument('-n', '-N', '--total', type=int, help='Total number of jobs.')
     parser.add_argument('-t', '-T', '--time', action='store_true', default=False,
                         help='Enable save runtime.')
-    parser.add_argument('--version', action='version', version='KITCAT 1.0')
+    parser.add_argument('--version', action='version', version='KITCAT 1.10')
     args = parser.parse_args()
 
     # Set job helper
