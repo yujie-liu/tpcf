@@ -83,6 +83,8 @@ class Bins(object):
         self.num_bins = {}
         self.set_nbins(binw)
 
+        print(self.num_bins)
+
     def __eq__(self, other):
         """ Comparing one bins with other """
         for key, val in self.limit.items():
@@ -98,7 +100,7 @@ class Bins(object):
 
         # separation (Mpc/h)
         binw_s = float(binw['s'])
-        nbins, binw_s = self._get_nbins(self.limit['s'][0], self.limit['s'][1], binw_s)
+        nbins, binw_s = self.get_nbins(self.limit['s'][0], self.limit['s'][1], binw_s)
         self.num_bins['s'] = nbins
 
         # comoving distance (Mpc/h)
@@ -107,7 +109,7 @@ class Bins(object):
             binw_r = self.default_binw('r', binw_s=binw_s)
         else:
             binw_r = float(binw_r)
-        nbins, binw_r = self._get_nbins(self.limit['r'][0], self.limit['r'][1], binw_r)
+        nbins, binw_r = self.get_nbins(self.limit['r'][0], self.limit['r'][1], binw_r)
         self.num_bins['r'] = nbins
 
         # angular variables (rad)
@@ -117,10 +119,10 @@ class Bins(object):
                     binw_angle = self.default_binw(key, binw_r=binw_r)
                 else:
                     binw_angle = numpy.deg2rad(float(val))
-                nbins, _ = self._get_nbins(self.limit[key][0], self.limit[key][1], binw_angle)
+                nbins, _ = self.get_nbins(self.limit[key][0], self.limit[key][1], binw_angle)
                 self.num_bins[key] = nbins
 
-    def _get_nbins(self, x_min, x_max, binwidth):
+    def get_nbins(self, x_min, x_max, binwidth):
         """ Return number of bins given min, max and binw.
         Round binw such that (max-min)/binw is an integer and return the new binw."""
         nbins = int(numpy.ceil((x_max-x_min)/binwidth))
