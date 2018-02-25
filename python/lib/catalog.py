@@ -8,12 +8,11 @@ from sklearn.neighbors import BallTree, KDTree
 # User-defined modules
 import lib.general as general
 
-class DataCatalog(object):
-    """ Class to handle data point catalogs. Data point catalogs are catalogs that have
-    the coordinates (dec, ra, z) of each data point. """
+class GalaxyCatalog(object):
+    """ Class to handle galaxy catalogs. """
 
     def __init__(self, reader, limit):
-        """ Initialize data point catalog.
+        """ Initialize galaxy catalog.
         Inputs:
         + reader: dict
             Dictionary with path and properties of catalog file.
@@ -28,7 +27,7 @@ class DataCatalog(object):
             self.set_limit(limit)
 
     def set_catalog(self, reader):
-        """ Read in data point catalog from FITS file. Convert redshift to
+        """ Read in galaxy catalog from FITS file. Convert redshift to
         comoving distance.
         Inputs:
         + reader: dict
@@ -87,8 +86,8 @@ class DataCatalog(object):
         self.catalog = self.catalog[index]
         self.ntotal = self.catalog.shape[0]
 
-    def to_distr(self, limit, nbins, cosmo=None):
-        """ Convert into DistrCatalog and return. If given cosmology, convert
+    def to_rand(self, limit, nbins, cosmo=None):
+        """ Convert into RandomCatalog and return. If given cosmology, convert
         redshift distribution to comoving distribution.
         Inputs:
         + limit: list, tuple, ndarray, dict
@@ -100,7 +99,7 @@ class DataCatalog(object):
         + cosmo: cosmology.Cosmology (default=None)
             Cosmology model to convert comoving to redshift.
         Outputs:
-        + distr_catalog: DistrCatalog
+        + rand: RandomCatalog
             Distribution catalog """
 
         # Initialize bins range and number of bins
@@ -122,17 +121,17 @@ class DataCatalog(object):
             bins_range[:2], num_bins[:2], weighted=False, normed=False)
 
         # Set up DistrCatalog attributes
-        distr_catalog = DistrCatalog()
-        distr_catalog.rz_distr = numpy.array([rz_distr_w, rz_distr_uw])
-        distr_catalog.angular_distr = general.hist2point(angular_distr, bins_dec, bins_ra)
-        distr_catalog.bins_rz = bins_rz
-        distr_catalog.bins_dec = bins_dec
-        distr_catalog.bins_ra = bins_ra
-        distr_catalog.norm_vars['ntotal'] = self.ntotal
-        distr_catalog.norm_vars['sum_w'] = numpy.sum(self.catalog[:, 3])
-        distr_catalog.norm_vars['sum_w2'] = numpy.sum(self.catalog[:, 3]**2)
+        rand = RandomCatalog()
+        rand.rz_distr = numpy.array([rz_distr_w, rz_distr_uw])
+        rand.angular_distr = general.hist2point(angular_distr, bins_dec, bins_ra)
+        rand.bins_rz = bins_rz
+        rand.bins_dec = bins_dec
+        rand.bins_ra = bins_ra
+        rand.norm_vars['ntotal'] = self.ntotal
+        rand.norm_vars['sum_w'] = numpy.sum(self.catalog[:, 3])
+        rand.norm_vars['sum_w2'] = numpy.sum(self.catalog[:, 3]**2)
 
-        return distr_catalog
+        return rand
 
     def redshift_distr(self, limit, nbins, cosmo=None, weighted=False, normed=False):
         """ Calculate redshift distribution. If cosmology is given, convert redshift
@@ -273,13 +272,12 @@ class DataCatalog(object):
         return tree
 
 
-class DistrCatalog(object):
-    """ Class to handle distribution catalog. Distribution catalogs are catalogs
-    that does not have the coordinates of each data points, but have the angular and
-    redshift (comoving distribution). """
+class RandomCatalog(object):
+    """ Class to handle random catalog. Random catalog has the angular and redshift
+    (comoving) distribution, but not the coordinates of each galaxy. """
 
     def __init__(self):
-        """ Initialize angular and comoving distribution """
+        """ Initialize angular, redshift (comoving) distribution, and normalization variables """
         self.rz_distr = None
         self.angular_distr = None
         self.bins_rz = None

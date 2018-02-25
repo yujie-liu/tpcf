@@ -6,9 +6,9 @@ import configparser
 import argparse
 
 # User-defined module
-from lib.catalog2 import DataCatalog
+from lib.catalog import GalaxyCatalog
 from lib.cosmology import Cosmology
-from lib.helper2 import Bins, CorrelationHelper
+from lib.helper import Bins, CorrelationHelper
 
 def save(fname, *save_list):
     """ Pickle a list of objects """
@@ -30,7 +30,7 @@ def main():
     parser.add_argument('-p', '-P', '--prefix', type=str, help='Output prefix.')
     parser.add_argument('-C', '--cosmology', action='store_true', default=False,
                         help='Enable cosmology calculation at the first step.')
-    parser.add_argument('--version', action='version', version='KITCAT 1.0')
+    parser.add_argument('--version', action='version', version='KITCAT 1.10')
     args = parser.parse_args()
 
     # Read from configuration file
@@ -48,9 +48,9 @@ def main():
 
     # Initialize catalog and save dictionary
     print('Initialize catalog')
-    data = DataCatalog(config['GALAXY'], bins.limit) # data catalog
-    rand = DataCatalog(config['RANDOM'], bins.limit) # random catalog
-    rand = rand.to_distr(bins.limit, bins.num_bins, cosmo)
+    data = GalaxyCatalog(config['GALAXY'], bins.limit) # data catalog
+    rand = GalaxyCatalog(config['RANDOM'], bins.limit) # random catalog
+    rand = rand.to_rand(bins.limit, bins.num_bins, cosmo)
     save_dict = {'dd': None, 'dr': None, 'rr': None, 'helper': None}
 
     # Create a kd-tree for DD calculation and pickle
