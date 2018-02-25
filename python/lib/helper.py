@@ -1,9 +1,7 @@
-""" Module with helper classes """
+""" Module with helper class """
 
-# Python modules
 import numpy
 
-# User-defined modules
 import lib.general as general
 
 class JobHelper(object):
@@ -38,9 +36,6 @@ class JobHelper(object):
         Outputs:
         + job_range: tuple
             Return the start and end indices """
-        if size < self.total_jobs:
-            raise ValueError('Size must be at least total jobs.')
-
         job_index = numpy.floor(numpy.linspace(0, size, self.total_jobs+1))
         job_index = job_index.astype(int)
         job_range = (job_index[self.current_job], job_index[self.current_job+1])
@@ -48,17 +43,15 @@ class JobHelper(object):
 
 class Bins(object):
     """ Class to handle uniform binnings """
-    def __init__(self, limit, binw, cosmo):
+    def __init__(self, limit, num_bins):
         """ Constructor sets up number of bins and bins range
         Inputs:
         + limit: dict
             Dictionary with bin range
             Key: dec_min, dec_max, ra_min, ra_max, z_min, z_max
         + binw: dict
-            Dictionary with binwidth
-            Key: path, dec, ra, z
-        + cosmo: cosmology.Cosmology
-            Cosmology object to convert redshift to comoving distance"""
+            Dictionary with bin number
+            Key: s, theta, dec, ra, z """
 
         # Set bin range
         limit_d = {}
@@ -67,9 +60,6 @@ class Bins(object):
             # redshift limit to comoving distance
             if key in ['dec_min', 'dec_max', 'ra_min', 'ra_max', 'theta_max']:
                 limit_d[key] = numpy.deg2rad(float(val))
-            elif key in ['z_min', 'z_max']:
-                key = 'r' + key[1:]
-                limit_d[key] = cosmo.z2r(float(val))
             else:
                 limit_d[key] = float(val)
         self.limit = {}
@@ -77,13 +67,12 @@ class Bins(object):
         self.limit['theta'] = [0., limit_d['theta_max']]
         self.limit['dec'] = [limit_d['dec_min'], limit_d['dec_max']]
         self.limit['ra'] = [limit_d['ra_min'], limit_d['ra_max']]
-        self.limit['r'] = [limit_d['r_min'], limit_d['r_max']]
+        self.limit['z'] = [limit_d['z_min'], limit_d['z_max']]
 
         # Set number of bins
         self.num_bins = {}
-        self.set_nbins(binw)
-
-        print(self.num_bins)
+        for key, val in num_bins.items():
+            self.num_bins[key] = int(val)
 
     def __eq__(self, other):
         """ Comparing one bins with other """
@@ -94,52 +83,6 @@ class Bins(object):
             if val != other.num_bins[key]:
                 return False
         return True
-
-    def set_nbins(self, binw):
-        """ Set up number of bins """
-
-        # separation (Mpc/h)
-        binw_s = float(binw['s'])
-        nbins, binw_s = self.get_nbins(self.limit['s'][0], self.limit['s'][1], binw_s)
-        self.num_bins['s'] = nbins
-
-        # comoving distance (Mpc/h)
-        binw_r = binw['r']
-        if binw_r == 'auto':
-            binw_r = self.default_binw('r', binw_s=binw_s)
-        else:
-            binw_r = float(binw_r)
-        nbins, binw_r = self.get_nbins(self.limit['r'][0], self.limit['r'][1], binw_r)
-        self.num_bins['r'] = nbins
-
-        # angular variables (rad)
-        for key, val in binw.items():
-            if key in ['dec', 'ra', 'theta']:
-                if val == 'auto':
-                    binw_angle = self.default_binw(key, binw_r=binw_r)
-                else:
-                    binw_angle = numpy.deg2rad(float(val))
-                nbins, _ = self.get_nbins(self.limit[key][0], self.limit[key][1], binw_angle)
-                self.num_bins[key] = nbins
-
-    def get_nbins(self, x_min, x_max, binwidth):
-        """ Return number of bins given min, max and binw.
-        Round binw such that (max-min)/binw is an integer and return the new binw."""
-        nbins = int(numpy.ceil((x_max-x_min)/binwidth))
-        binw = (x_max-x_min)/nbins
-        return nbins, binw
-
-    def default_binw(self, key, binw_r=None, binw_s=None):
-        """ Return the default binwidth """
-        if key in ['dec', 'ra', 'theta']:
-            binw = 1.*binw_r/self.max('r')
-        elif key == 'r':
-            binw = 0.5*binw_s
-        elif key == 's':
-            binw = 2.
-        else:
-            raise ValueError('Valid key: "dec", "ra", "theta", "r"')
-        return binw
 
     def min(self, key):
         """ Return binning lower bound """
@@ -157,14 +100,23 @@ class Bins(object):
         """ Return binwidth """
         return (self.max(key)-self.min(key))/self.nbins(key)
 
-    def bins(self, key):
+    def bins(self, key, cosmo=None):
         """ Return uniform binning """
-        return numpy.linspace(self.limit[key][0], self.limit[key][1], self.num_bins[key]+1)
+        bins_min = self.min(key)
+        bins_max = self.max(key)
+        nbins = self.nbins(key)
+
+        # Uniformly over 'r'
+        if key == 'z' and cosmo is not None:
+            bins_min = cosmo.z2r(bins_min)
+            bins_max = cosmo.z2r(bins_max)
+
+        return numpy.linspace(bins_min, bins_max, nbins+1)
 
 
 class CorrelationHelper(object):
     """ Class to handle multiprocess correlation function calculation """
-    def __init__(self, bins):
+    def __init__(self, bins, cosmo=None):
         """ Constructor set up attributes """
 
         # Initialize binnings
@@ -176,12 +128,15 @@ class CorrelationHelper(object):
         # Initialize histogram
         self.data_data = numpy.zeros((2, self.bins.nbins('s')))
         self.theta_distr = numpy.zeros(self.bins.nbins('theta'))
-        self.r_theta_distr = numpy.zeros((2, self.bins.nbins('theta'), self.bins.nbins('r')))
-        self.r_distr = None
+        self.rz_theta_distr = numpy.zeros((2, self.bins.nbins('theta'), self.bins.nbins('z')))
+        self.rz_distr = None
 
-    def set_r_distr(self, r_distr):
+        # Initalize cosmology
+        self.cosmo = cosmo
+
+    def set_rz_distr(self, rz_distr):
         """ Setting up P(r) """
-        self.r_distr = r_distr
+        self.rz_distr = rz_distr
 
     def set_norm(self, norm_dd, norm_dr, norm_rr):
         """ Setting up normalization """
@@ -272,11 +227,10 @@ class CorrelationHelper(object):
         # Correction for double counting
         self.theta_distr = self.theta_distr/2.
 
-    def set_r_theta_distr(self, tree, data_catalog, angular_catalog, mode, job_helper=None):
-        """ Calculate g(theta, r) using a modified nearest-neighbors BallTree search/
+    def set_rz_theta_distr(self, tree, data_catalog, angular_catalog, mode, job_helper=None):
+        """ Calculate g(theta, z) using a modified nearest-neighbors BallTree search
         Metric = 'haversine'.
         NOTE: assume uniformed comoving bins
-        Inputs:
         Inputs:
         + tree: sklearn.neighbors.BallTree
             Balltree built from DEC and RA coordinates
@@ -294,10 +248,14 @@ class CorrelationHelper(object):
             start, end = job_helper.get_index_range(angular_catalog.shape[0])
 
         # Initialize some binning variables
-        nbins_r = self.bins.nbins('r')
-        nbins_theta = self.bins.nbins('theta')
+        nbins = (self.bins.nbins('theta'), self.bins.nbins('z'))
         theta_max = self.bins.max('theta')
-        limit = ((0., theta_max), (self.bins.min('r'), self.bins.max('r')))
+        rz_min = self.bins.min('z')
+        rz_max = self.bins.max('z')
+        if self.cosmo is not None:
+            rz_min = self.cosmo.z2r(rz_min)
+            rz_max = self.cosmo.z2r(rz_max)
+        limit = ((0., theta_max), (rz_min, rz_max))
 
         print("Construct angular-comoving from index {} to {}".format(start, end-1))
         if mode == "angular_tree":
@@ -306,21 +264,21 @@ class CorrelationHelper(object):
                     print(i)
                 index, theta = tree.query_radius(
                     point[:2].reshape(1, -1), r=theta_max, return_distance=True)
-                r = numpy.repeat(point[2], index[0].size)
+                z = numpy.repeat(point[2], index[0].size)
 
                 # Fill unweighted histogram
                 weights = angular_catalog[:, 2][index[0]]
                 hist, _, _ = numpy.histogram2d(
-                    theta[0], r, bins=(nbins_theta, nbins_r), range=limit, weights=weights)
-                self.r_theta_distr[1] += hist
+                    theta[0], z, bins=nbins, range=limit, weights=weights)
+                self.rz_theta_distr[1] += hist
 
                 # Fill weighted histogram
                 # weight is the product of the weight of the data point and the weight
                 # of the angular point.
                 weights = weights*point[3]
                 hist, _, _ = numpy.histogram2d(
-                    theta[0], r, bins=(nbins_theta, nbins_r), range=limit, weights=weights)
-                self.r_theta_distr[0] += hist
+                    theta[0], z, bins=nbins, range=limit, weights=weights)
+                self.rz_theta_distr[0] += hist
 
         elif mode == "data_tree":
             for i, point in enumerate(angular_catalog[start:end]):
@@ -328,37 +286,37 @@ class CorrelationHelper(object):
                     print(i)
                 index, theta = tree.query_radius(
                     point[:2].reshape(1, -1), r=theta_max, return_distance=True)
-                r = data_catalog[:, 2][index[0]]
+                z = data_catalog[:, 2][index[0]]
 
                 # Fill weighted histogram
                 # weight is the product of the weight of the data point and the weight of
                 # the angular point
                 weights = point[2]*data_catalog[:, 3][index[0]]
                 hist, _, _ = numpy.histogram2d(
-                    theta[0], r, bins=(nbins_theta, nbins_r), range=limit, weights=weights)
-                self.r_theta_distr[0] += hist
+                    theta[0], z, bins=nbins, range=limit, weights=weights)
+                self.rz_theta_distr[0] += hist
 
                 # Fill unweighted histogram
                 # weight is the weight of the angular point
                 hist, _, _ = numpy.histogram2d(
-                    theta[0], r, bins=(nbins_theta, nbins_r), range=limit)
-                self.r_theta_distr[1] += hist*point[2]
+                    theta[0], z, bins=nbins, range=limit)
+                self.rz_theta_distr[1] += hist*point[2]
 
     def add(self, other):
         """ Add another part """
         self.data_data = self.data_data+other.data_data
         self.theta_distr = self.theta_distr+other.theta_distr
-        self.r_theta_distr = self.r_theta_distr+other.r_theta_distr
+        self.rz_theta_distr = self.rz_theta_distr+other.rz_theta_distr
 
     def get_data_data(self):
         """ Return DD(s) """
         print("Calculate DD(s)")
         return self.data_data
 
-    def get_rand_rand(self):
+    def get_rand_rand(self, cosmo=None):
         """ Calculate and return RR(s) """
-        if self.r_distr is None:
-            return RuntimeError("Comoving distribution is None.")
+        if self.rz_distr is None:
+            return RuntimeError("Redshift/comoving distribution is None.")
 
         print("Calculate RR(s)")
 
@@ -367,11 +325,18 @@ class CorrelationHelper(object):
 
         # Set up PDF maps and bins
         bins_theta = self.bins.bins('theta')
-        bins_r = self.bins.bins('r')
+
+        # Apply cosmology
+        if self.cosmo is None and cosmo is not None:
+            bins_z = self.bins.bins('z')
+            bins_r = cosmo.z2r(bins_z)  # Uniform over 'z', NOT 'r'
+        else:
+            bins_r = self.bins.bins('z', self.cosmo) # Unifrom over 'r'
+
         bins = [bins_theta, bins_r, bins_r]
 
-        w_maps = [self.theta_distr, self.r_distr[0], self.r_distr[0]]
-        uw_maps = [self.theta_distr, self.r_distr[1], self.r_distr[1]]
+        w_maps = [self.theta_distr, self.rz_distr[0], self.rz_distr[0]]
+        uw_maps = [self.theta_distr, self.rz_distr[1], self.rz_distr[1]]
 
         # Calculate weighted distribution
         rand_rand[0] += general.prob_convolution(
@@ -383,9 +348,9 @@ class CorrelationHelper(object):
 
         return rand_rand
 
-    def get_data_rand(self):
+    def get_data_rand(self, cosmo=None):
         """ Calculate and return DR(s) """
-        if self.r_distr is None:
+        if self.rz_distr is None:
             raise RuntimeError("Comoving distribution is None.")
 
         print("Calculate DR(s)")
@@ -395,15 +360,22 @@ class CorrelationHelper(object):
 
         # Set up PDF maps and bins
         bins_theta = self.bins.bins('theta')
-        bins_r = self.bins.bins('r')
+
+        # Apply cosmology
+        if self.cosmo is None and cosmo is not None:
+            bins_z = self.bins.bins('z')
+            bins_r = cosmo.z2r(bins_z)  # Uniform over 'z', NOT 'r'
+        else:
+            bins_r = self.bins.bins('z', self.cosmo) # Unifrom over 'r'
+
         bins = [bins_theta, bins_r, bins_r]
 
         # Calculate weighted distribution
         data_rand[0] += general.prob_convolution2d(
-            self.r_theta_distr[0], self.r_distr[0], bins, general.distance, self.bins.bins('s'))
+            self.rz_theta_distr[0], self.rz_distr[0], bins, general.distance, self.bins.bins('s'))
 
         # Calculate unweighted distribution
         data_rand[1] += general.prob_convolution2d(
-            self.r_theta_distr[1], self.r_distr[1], bins, general.distance, self.bins.bins('s'))
+            self.rz_theta_distr[1], self.rz_distr[1], bins, general.distance, self.bins.bins('s'))
 
         return data_rand
