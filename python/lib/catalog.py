@@ -66,7 +66,6 @@ class GalaxyCatalog(object):
         catalog = numpy.copy(self.catalog)
         if cosmo is not None:
             catalog[:, 2] = cosmo.z2r(catalog[:, 2])
-            print(catalog)
         return catalog
 
 

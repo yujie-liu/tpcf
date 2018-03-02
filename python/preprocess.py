@@ -8,7 +8,8 @@ import argparse
 # User-defined module
 from lib.catalog import GalaxyCatalog
 from lib.cosmology import Cosmology
-from lib.helper import Bins, CorrelationHelper
+from lib.helper import CorrelationHelper
+from lib.bins import Bins
 
 def save(fname, *save_list):
     """ Pickle a list of objects """

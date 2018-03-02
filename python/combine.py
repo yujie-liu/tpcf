@@ -34,7 +34,7 @@ def main():
     args = parser.parse_args()
 
     # Read in helper from pickles
-    fname_list = sorted(glob.glob("{}_divide*.pkl".format(args.prefix)))
+    fname_list = sorted(glob.glob("{}_divide_*.pkl".format(args.prefix)))
     helper = None
     for i, fname in enumerate(fname_list):
         print("Reading from {}".format(fname))
@@ -54,11 +54,10 @@ def main():
         # Calculate DD
         data = next(load('{}_preprocess.pkl'.format(args.prefix)))['dd']
         tree, catalog = data.build_balltree('euclidean', cosmo=cosmo, return_catalog=True)
-        helper.set_data_data(tree, catalog)
+        helper.set_dd(tree, catalog)
 
-    data_data = helper.get_data_data()
-    data_rand = helper.get_data_rand(cosmo)
-    rand_rand = helper.get_rand_rand(cosmo)
+    data_data = helper.get_dd()
+    rand_rand, data_rand = helper.get_rr_dr(cosmo)
 
     # Set up and calculate correlation function
     tpcf = Correlation(data_data, data_rand, rand_rand, helper.bins.bins('s'), helper.norm)
