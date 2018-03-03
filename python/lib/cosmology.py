@@ -80,7 +80,7 @@ class Cosmology():
         + r: list, tuple, ndarray, float
             Return comoving distance given set cosmology. """
         # Check if input exceeds limit of table
-        if z < 0 or z > 3.0:
+        if numpy.all(z < 0) or numpy.all(z > 3.0):
             raise ValueError('Redshift must be between 0 and 3.0')
 
         r = self._z2r(z)
@@ -98,7 +98,9 @@ class Cosmology():
         + z: list, tuple, ndarray, float
             Return redshift given set cosmology. """
         # Check if input exceeds limit of table
-        if r < self.comoving_table[:, 1][0] or r > self.comoving_table[:, 1][-1]:
+        r_min = self.comoving_table[:, 1][0]
+        r_max = self.comoving_table[:, 1][-1]
+        if numpy.all(r < r_min) or numpy.all(r > r_max):
             raise ValueError('Comoving distance exceeds limit of table.')
 
         z = self._r2z(r)
