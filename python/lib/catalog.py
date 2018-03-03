@@ -68,7 +68,6 @@ class GalaxyCatalog(object):
             catalog[:, 2] = cosmo.z2r(catalog[:, 2])
         return catalog
 
-
     def set_limit(self, limit):
         """ Set boundaries of catalog
         Inputs:

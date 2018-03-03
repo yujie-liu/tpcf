@@ -22,11 +22,13 @@ class Cosmology():
         is used. For now the cosmological parameters measured by Planck
         (P.A.R. Ade et al., Paper XIII, A&A 594:A13, 2016) are used.
         """
-        self.model = 0
-        self.__comoving_table = 0
+        self.model = None
+        self.comoving_table = None
         self.set_model(cosmo)
+        self._z2r = interpolate.pchip(*self.comoving_table.T)
+        self._r2z = interpolate.pchip(*self.comoving_table[:, ::-1].T)
 
-    def __set_comoving_table(self):
+    def _set_comoving_table(self):
         """ Set redshift-comoving table """
         # Default parameters
         z_min = 0.
@@ -37,9 +39,9 @@ class Cosmology():
         n =  int(numpy.ceil((z_max-z_min)/step))
         z = numpy.linspace(z_min, z_max, n)
         r = self.model.comoving_distance(z)
-        self.__comoving_table = numpy.array([z, r]).T
+        self.comoving_table = numpy.array([z, r]).T
 
-    def set_model(self, cosmo):
+    def set_model(self, cosmo=None):
         """ Read cosmologies from configuration file and reset table
         Inputs:
         + cosmo: dictionary
@@ -67,25 +69,40 @@ class Cosmology():
                                              m_nu=[m_nu1, m_nu2, m_nu3]*units.eV)
 
         # Set up redshift-comoving table
-        self.__set_comoving_table()
+        self._set_comoving_table()
 
     def z2r(self, z):
         """Convert redshift to comoving distance by linear interpolating from table.
         Inputs:
-        + z: float
+        + z: list, tuple, ndarray, float
             Redshift 0 < z < 3.0.
         Outputs:
-        + r: float
-            Return comoving distance given set cosmology.
-        """
-        r = interpolate.PchipInterpolator(*self.__comoving_table.T)(z)
+        + r: list, tuple, ndarray, float
+            Return comoving distance given set cosmology. """
+        # Check if input exceeds limit of table
+        if z < 0 or z > 3.0:
+            raise ValueError('Redshift must be between 0 and 3.0')
+
+        r = self._z2r(z)
         if isinstance(z, (list, tuple, numpy.ndarray)):
             return r
         # Avoid 0-dimensional array
         return float(r)
 
+    def r2z(self, r):
+        """Convert comoving distance to redshift by linear interpolating from table.
+        Inputs:
+        + r: list, tuple, ndarray, float
+            Comoving distance within limit of table
+        Outputs:
+        + z: list, tuple, ndarray, float
+            Return redshift given set cosmology. """
+        # Check if input exceeds limit of table
+        if r < self.comoving_table[:, 1][0] or r > self.comoving_table[:, 1][-1]:
+            raise ValueError('Comoving distance exceeds limit of table.')
 
-    @property
-    def comoving_table(self):
-        """ Return a copy of the comoving distance table """
-        return numpy.copy(self.__comoving_table)
+        z = self._r2z(r)
+        if isinstance(r, (list, tuple, numpy.ndarray)):
+            return z
+        # Avoid 0-dimensional array
+        return float(z)

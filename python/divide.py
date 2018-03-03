@@ -64,7 +64,7 @@ def main():
         # Import data and calculate DD(s)
         tree = loader['dd']['tree']
         catalog = loader['dd']['catalog']
-        correlation.set_data_data(tree, catalog, job_helper)
+        correlation.set_dd(tree, catalog, job_helper)
 
         # Save and print out time
         timer['dd'] = time.time()-start_time
