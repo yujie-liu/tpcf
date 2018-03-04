@@ -11,7 +11,7 @@ two changes:
 
 # Python modules
 import numpy
-from astropy import cosmology, units
+from astropy import cosmology
 from scipy import interpolate
 
 class Cosmology():
@@ -50,23 +50,14 @@ class Cosmology():
         """
         # Set astropy cosmology model
         if cosmo is None:
-            self.model = cosmology.LambdaCDM(
-                H0=100*units.km/(units.Mpc*units.s), Om0=0.307, Ob0=0.0486, Ode0=0.693,
-                Tcmb0=2.725, Neff=3.05, m_nu=[0., 0., 0.06]*units.eV)
+            self.model = cosmology.LambdaCDM(H0=100, Om0=0.307, Ode0=0.693)
         else:
             params = {}
             for key, val in cosmo.items():
-                params[key] = float(val)
-            m_nu1 = params['m_nu1']
-            m_nu2 = params['m_nu2']
-            m_nu3 = params['m_nu3']
-            self.model = cosmology.LambdaCDM(H0=params['hubble0']*units.km/(units.Mpc*units.s),
-                                             Om0=params['omega_m0'],
-                                             Ob0=params['omega_b0'],
-                                             Ode0=params['omega_de0'],
-                                             Tcmb0=params['temp_cmb'],
-                                             Neff=params['nu_eff'],
-                                             m_nu=[m_nu1, m_nu2, m_nu3]*units.eV)
+                if key in ['hubble0', 'omega_m0', 'omega_de0']:
+                    params[key] = float(val)
+            self.model = cosmology.LambdaCDM(
+                H0=params['hubble0'], Om0=params['omega_m0'], Ode0=params['omega_de0'],)
 
         # Set up redshift-comoving table
         self._set_comoving_table()
