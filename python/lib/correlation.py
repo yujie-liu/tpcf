@@ -26,6 +26,12 @@ class Correlation(object):
                 distr[key][0] = distr[key][0]/norm[key][i]
                 distr[key][1] = distr[key][1]/norm[key][i] # propagate error
 
+    def get_distr(self, key, weighted=True):
+        """ Get distribution """
+        if weighted:
+            return self.w_distr[key]
+        return self.uw_distr[key]
+
     def distr_error(self, w_distr, uw_distr):
         """ Get statistical bin error of separation distribution
         Inputs:

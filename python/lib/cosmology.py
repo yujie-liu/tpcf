@@ -86,7 +86,7 @@ class Cosmology():
         return float(r)
 
     def r2z(self, r):
-        """Convert comoving distance to redshift by linear interpolating from table.
+        """ Convert comoving distance to redshift by linear interpolating from table.
         Inputs:
         + r: list, tuple, ndarray, float
             Comoving distance within limit of table
@@ -108,3 +108,7 @@ class Cosmology():
             return z
         # Avoid 0-dimensional array
         return float(z)
+
+    def dels_to_delz(self, delta_s, z_min):
+        """ Compute delta z given delta s and the lower redshift limit. """
+        return self.r2z(self.z2r(z_min)+delta_s)-z_min

@@ -82,6 +82,9 @@ class CorrelationHelper(object):
         + job_helper: helper.JobHelper (default=None)
             Job manager to handle multiprocess indices. If None, assume one job. """
 
+        # Reset previous value of dd
+        self.data_data = numpy.zeros((2, self.bins.nbins('s')))
+
         # If job_helper is None, assume one job
         if job_helper is None:
             job_helper = JobHelper(1)
@@ -128,6 +131,9 @@ class CorrelationHelper(object):
         + job_helper: helper.JobHelper (default=None)
             Job manager to handle multiprocess indices. If None, assume one job."""
 
+        # Reset previous value of f(theta)
+        self.theta_distr = numpy.zeros(self.bins.nbins('theta'))
+
         # If job_helper is None, assume one job
         if job_helper is None:
             job_helper = JobHelper(1)
@@ -167,6 +173,9 @@ class CorrelationHelper(object):
             Angular catalog from random data (with weights)
         + job_helper: helper.JobHelper (default=None)
             Job manager to handle multiprocess indices. If None, assume one job. """
+
+        # Reset previous values of g(theta, r)
+        self.rz_theta_distr = numpy.zeros((2, self.bins.nbins('theta'), self.bins.nbins('z')))
 
         # Get start and end indices
         if mode == "angular_tree":
@@ -255,8 +264,11 @@ class CorrelationHelper(object):
         bins_theta = self.bins.bins('theta')
 
         # Apply cosmology to calculate comoving bins
-        if self.cosmo is None and cosmo is not None:
-            bins_r = cosmo.z2r(self.bins.bins('z'))  # Uniform over 'z', NOT 'r'
+        if self.cosmo is None:
+            if cosmo is not None:
+                bins_r = cosmo.z2r(self.bins.bins('z'))  # Uniform over 'z', NOT 'r'
+            else:
+                raise TypeError('No input cosmology found.')
         else:
             bins_r = self.bins.bins('z', self.cosmo) # Uniform over 'r'
 
@@ -293,8 +305,11 @@ class CorrelationHelper(object):
         bins_theta = self.bins.bins('theta')
 
         # Apply cosmology to calculate comoving bins
-        if self.cosmo is None and cosmo is not None:
-            bins_r = cosmo.z2r(self.bins.bins('z'))  # Uniform over 'z', NOT 'r'
+        if self.cosmo is None:
+            if cosmo is not None:
+                bins_r = cosmo.z2r(self.bins.bins('z'))  # Uniform over 'z', NOT 'r'
+            else:
+                raise TypeError('No input cosmology found.')
         else:
             bins_r = self.bins.bins('z', self.cosmo) # Uniform over 'r'
 
@@ -329,8 +344,11 @@ class CorrelationHelper(object):
         bins_theta = self.bins.bins('theta')
 
         # Apply cosmology to calculate comoving bins
-        if self.cosmo is None and cosmo is not None:
-            bins_r = cosmo.z2r(self.bins.bins('z'))  # Uniform over 'z', NOT 'r'
+        if self.cosmo is None:
+            if cosmo is not None:
+                bins_r = cosmo.z2r(self.bins.bins('z'))  # Uniform over 'z', NOT 'r'
+            else:
+                raise TypeError('No input cosmology found.')
         else:
             bins_r = self.bins.bins('z', self.cosmo) # Uniform over 'r'
 
