@@ -181,7 +181,7 @@ class CorrelationHelper(object):
 
         # Get start and end indices
         if mode == "angular_tree":
-            start, end = job_helper.get_index_range(data_catalog.ntotal)
+            start, end = job_helper.get_index_range(data_catalog.shape[0])
         elif mode == "data_tree":
             start, end = job_helper.get_index_range(angular_catalog.shape[0])
 
