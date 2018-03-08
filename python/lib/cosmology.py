@@ -14,6 +14,7 @@ import numpy
 from astropy import cosmology
 from scipy import interpolate
 
+
 class Cosmology():
     """ Class to manage cosmological parameters and convert redshift z into
         comoving distance using linear interpolation technique. """
@@ -112,3 +113,25 @@ class Cosmology():
     def dels_to_delz(self, delta_s, z_min):
         """ Compute delta z given delta s and the lower redshift limit. """
         return self.r2z(self.z2r(z_min)+delta_s)-z_min
+
+    @staticmethod
+    def min_cosmo(cosmo_list):
+        """ Find cosmology with the minimum value of Omega_m0 """
+        min_value = 100000 # sentinel value
+        min_cosmo = None
+        for cosmo in cosmo_list:
+            if cosmo.model.Om0 <= min_value:
+                min_value = cosmo.model.Om0
+                min_cosmo = cosmo
+        return min_cosmo
+
+    @staticmethod
+    def max_cosmo(cosmo_list):
+        """ Find cosmology with the maximum value of Omega_m0 """
+        max_value = -100000 # sentinel value
+        max_cosmo = None
+        for cosmo in cosmo_list:
+            if cosmo.model.Om0 >= max_value:
+                max_value = cosmo.model.Om0
+                max_cosmo = cosmo
+        return max_cosmo

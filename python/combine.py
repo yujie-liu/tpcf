@@ -5,7 +5,7 @@ import glob
 import pickle
 import configparser
 
-from lib.cosmology import Cosmology
+from lib.cosmology import Cosmology, min_cosmology, max_cosmology
 from lib.correlation import Correlation
 
 def load(fname):
@@ -30,15 +30,28 @@ def read_cosmology(cosmo):
     cosmo_dict = {'hubble0': [], 'omega_m0': [], 'omega_de0': []}
 
     # Read value from configuration section
+    i = 0
     for key, val in cosmo.items():
+        # Get parameters and convert to float
+        pars = [float(p) for p in val.split(',')]
+
+        # Check length of each arguments
+        if i == 0:
+            n = len(pars)
+        if n != len(pars):
+            raise ValueError('All cosmological parameters must have the same length')
+
+        # Add into a temporary dictionary
         if key in cosmo_dict.keys():
-            cosmo_dict[key] = [float(pars) for pars in val.split(',')]
+            cosmo_dict[key] = pars
 
     # Initialize list of cosmological model
-    for i in range(len(cosmo_dict['hubble0'])):
-        cosmo_list.append(Cosmology({'hubble0': cosmo_dict['hubble0'][i],
-                                     'omega_m0': cosmo_dict['omega_m0'][i],
-                                     'omega_de0': cosmo_dict['omega_de0'][i]}))
+    for i in range(n):
+        temp = {}
+        for key, val in cosmo_dict.items():
+            temp[key] = val[i]
+        cosmo_list.append(Cosmology(temp))
+
     return cosmo_list
 
 def main():

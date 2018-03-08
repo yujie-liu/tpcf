@@ -24,17 +24,29 @@ def read_cosmology(cosmo):
     cosmo_dict = {'hubble0': [], 'omega_m0': [], 'omega_de0': []}
 
     # Read value from configuration section
+    i = 0
     for key, val in cosmo.items():
         if key in cosmo_dict.keys():
-            cosmo_dict[key] = [float(pars) for pars in val.split(',')]
+            # Get parameters and convert to float
+            pars = [float(p) for p in val.split(',')]
+
+            # Check length of each arguments
+            if i == 0:
+                n = len(pars)
+            if n != len(pars):
+                raise ValueError('All cosmological parameters must have the same length')
+
+            # Add into a temporary dictionary
+            cosmo_dict[key] = pars
 
     # Initialize list of cosmological model
-    for i in range(len(cosmo_dict['hubble0'])):
-        cosmo_list.append(Cosmology({'hubble0': cosmo_dict['hubble0'][i],
-                                     'omega_m0': cosmo_dict['omega_m0'][i],
-                                     'omega_de0': cosmo_dict['omega_de0'][i]}))
-    return cosmo_list
+    for i in range(n):
+        temp = {}
+        for key, val in cosmo_dict.items():
+            temp[key] = val[i]
+        cosmo_list.append(Cosmology(temp))
 
+    return cosmo_list
 
 def main():
     """ Convert FITS into Catalog object """
@@ -44,8 +56,10 @@ def main():
     parser = argparse.ArgumentParser(description='Preprocess galaxy and random catalogs.')
     parser.add_argument('-c', '-C', '--config', type=str, help='Path to configuration file.')
     parser.add_argument('-p', '-P', '--prefix', type=str, help='Output prefix.')
-    parser.add_argument('-iz', '--index_z', type=int, default=0, help='Index of Z-slice.')
-    parser.add_argument('-nz', '--total_z', type=int, default=1, help='Total number of Z-slices.')
+    parser.add_argument('-a', '-A', '--auto', action='store_true', default=False,
+                        help='Set automatical binning')
+    parser.add_argument('-iz', '--islice', type=int, default=0, help='Index of Z-slice.')
+    parser.add_argument('-nz', '--nslice', type=int, default=1, help='Total number of Z-slices.')
     parser.add_argument('--version', action='version', version='KITCAT 1.10')
     args = parser.parse_args()
 
@@ -61,8 +75,13 @@ def main():
     print('- Number of models: {}'.format(len(cosmo_list)))
 
     # Read in binning scheme
-    print('- Setting up binning schemes')
-    bins = Bins(config['LIMIT'], num_bins=config['NBINS'])
+    num_bins = None if args.auto else config['NBINS']
+    if cosmo is None:
+        bins = Bins(config['LIMIT'], num_bins=num_bins, islice=args.islice, nslice=args.nslice,
+                    cosmo=cosmo_list, auto=args.auto)
+    else:
+        bins = Bins(config['LIMIT'], num_bins=num_bins, islice=args.islice, nslice=args.nslice,
+                    cosmo=cosmo, auto=args.auto)
 
     # Initialize catalog and save dictionary
     print('- Initialize catalog')
