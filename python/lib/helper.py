@@ -2,7 +2,9 @@
 
 import numpy
 
-import lib.general as general
+def distance(theta, r1, r2):
+    """ Calculate distance between two points at radius r1, r2 separated by angle theta """
+    return numpy.sqrt(r1**2+r2**2-2*r1*r2*numpy.cos(theta))
 
 class JobHelper(object):
     """ Class to handle multiprocess job """
@@ -95,7 +97,7 @@ class CorrelationHelper(object):
 
         s_max = self.bins.max('s')
         nbins_s = self.bins.nbins('s')
-        print("Calculate DD from index {} to {}".format(start, end-1))
+        print("- Calculate DD from index {} to {}".format(start, end-1))
         for i, point in enumerate(catalog[start:end]):
             if i % 10000 is 0:
                 print(i)
@@ -144,7 +146,7 @@ class CorrelationHelper(object):
 
         theta_max = self.bins.max('theta')
         nbins_theta = self.bins.nbins('theta')
-        print("Construct f(theta) from index {} to {}".format(start, end-1))
+        print("- Construct f(theta) from index {} to {}".format(start, end-1))
         for i, point in enumerate(catalog[start:end]):
             if i % 10000 is 0:
                 print(i)
@@ -193,7 +195,7 @@ class CorrelationHelper(object):
             rz_max = self.cosmo.z2r(rz_max)
         limit = ((0., theta_max), (rz_min, rz_max))
 
-        print("Construct angular-comoving from index {} to {}".format(start, end-1))
+        print("- Construct angular-comoving from index {} to {}".format(start, end-1))
         if mode == "angular_tree":
             for i, point in enumerate(data_catalog[start:end]):
                 if i % 10000 is 0:
@@ -246,7 +248,7 @@ class CorrelationHelper(object):
 
     def get_dd(self):
         """ Return DD(s) """
-        print("Calculate DD(s)")
+        print("- Calculate DD(s)")
         return self.data_data
 
     def get_rr(self, cosmo=None):
@@ -254,7 +256,7 @@ class CorrelationHelper(object):
         if self.rz_distr is None:
             return RuntimeError("Redshift/comoving distribution is None.")
 
-        print("Calculate RR(s)")
+        print("- Calculate RR(s)")
 
         # Initialize separation distribution and binning
         rand_rand = numpy.zeros((2, self.bins.nbins('s')))
@@ -281,8 +283,7 @@ class CorrelationHelper(object):
                    *self.theta_distr[None, :, None, None])
 
         # Calculate 3-dimensional separation matrix
-        dist = general.distance(
-            bins_theta[:, None, None], bins_r[None, :, None], bins_r[None, None, :])
+        dist = distance(bins_theta[:, None, None], bins_r[None, :, None], bins_r[None, None, :])
 
         # Calculate RR(s) by histograming
         for i in range(2):
@@ -295,7 +296,7 @@ class CorrelationHelper(object):
         if self.rz_distr is None:
             raise RuntimeError("Comoving distribution is None.")
 
-        print("Calculate DR(s)")
+        print("- Calculate DR(s)")
 
         # Initialize separation distribution and binning
         data_rand = numpy.zeros((2, self.bins.nbins('s')))
@@ -321,8 +322,7 @@ class CorrelationHelper(object):
         weights = self.rz_distr[:, None, None, :]*self.rz_theta_distr[:, :, :, None]
 
         # Construct a 3d matrix for pairing
-        dist = general.distance(
-            bins_theta[:, None, None], bins_r[None, :, None], bins_r[None, None, :])
+        dist = distance(bins_theta[:, None, None], bins_r[None, :, None], bins_r[None, None, :])
 
         # Construct DR(s)
         for i in range(2):
@@ -362,12 +362,10 @@ class CorrelationHelper(object):
         weights_dr = self.rz_distr[:, None, None, :]*self.rz_theta_distr[:, :, :, None]
 
         # Calculate 3-dimensional separation matrix
-        dist = general.distance(
-            bins_theta[:, None, None], bins_r[None, :, None], bins_r[None, None, :])
+        dist = distance(bins_theta[:, None, None], bins_r[None, :, None], bins_r[None, None, :])
 
         # Calculate RR(s) and DR(s) by histograming
-        print("Calculate RR(s)")
-        print("Calculate DR(s)")
+        print("- Calculate RR(s) and DR(s)")
         for i in range(2):
             rand_rand[i], _ = numpy.histogram(
                 dist, bins=self.bins.bins('s'), weights=weights_rr[i])

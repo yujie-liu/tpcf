@@ -1,52 +1,14 @@
 """ Module to create preprocessed catalog object"""
 
 # Standard Python module
-import pickle
 import configparser
 import argparse
 
 # User-defined module
+from lib.myio import save, read_cosmology
 from lib.catalog import GalaxyCatalog
-from lib.cosmology import Cosmology
 from lib.helper import CorrelationHelper
 from lib.bins import Bins
-
-def save(fname, *save_list):
-    """ Pickle a list of objects """
-    pickle_out = open(fname, 'wb')
-    for save_object in save_list:
-        pickle.dump(save_object, pickle_out, protocol=-1)
-    pickle_out.close()
-
-def read_cosmology(cosmo):
-    """ Read in multiple cosmological models """
-    cosmo_list = []
-    cosmo_dict = {'hubble0': [], 'omega_m0': [], 'omega_de0': []}
-
-    # Read value from configuration section
-    i = 0
-    for key, val in cosmo.items():
-        if key in cosmo_dict.keys():
-            # Get parameters and convert to float
-            pars = [float(p) for p in val.split(',')]
-
-            # Check length of each arguments
-            if i == 0:
-                n = len(pars)
-            if n != len(pars):
-                raise ValueError('All cosmological parameters must have the same length')
-
-            # Add into a temporary dictionary
-            cosmo_dict[key] = pars
-
-    # Initialize list of cosmological model
-    for i in range(n):
-        temp = {}
-        for key, val in cosmo_dict.items():
-            temp[key] = val[i]
-        cosmo_list.append(Cosmology(temp))
-
-    return cosmo_list
 
 def main():
     """ Convert FITS into Catalog object """
@@ -58,10 +20,18 @@ def main():
     parser.add_argument('-p', '-P', '--prefix', type=str, help='Output prefix.')
     parser.add_argument('-a', '-A', '--auto', action='store_true', default=False,
                         help='Set automatical binning')
-    parser.add_argument('-iz', '--islice', type=int, default=0, help='Index of Z-slice.')
-    parser.add_argument('-nz', '--nslice', type=int, default=1, help='Total number of Z-slices.')
+    parser.add_argument('-b', '-B', '--binwidth', type=float, default=4.00,
+                        help='Binwidth of separation. Enable only if auto is True.')
+    parser.add_argument('-i', '-I', '--islice', type=int, default=0,
+                        help='Index of Z-slice. From 0 to N-1.')
+    parser.add_argument('-n', '-N', '--nslice', type=int, default=1,
+                        help='Total number of Z-slices.')
     parser.add_argument('--version', action='version', version='KITCAT 1.10')
     args = parser.parse_args()
+
+    # Check arguments
+    if args.islice < 0 or args.islice >= args.nslice:
+        raise ValueError('islice must be at least 0 and less than nslice.')
 
     # Read from configuration file
     print('- Reading configuration file from {}'.format(args.config))
@@ -78,10 +48,10 @@ def main():
     num_bins = None if args.auto else config['NBINS']
     if cosmo is None:
         bins = Bins(config['LIMIT'], num_bins=num_bins, islice=args.islice, nslice=args.nslice,
-                    cosmo=cosmo_list, auto=args.auto)
+                    cosmo=cosmo_list, auto=args.auto, binw_s=args.binwidth)
     else:
         bins = Bins(config['LIMIT'], num_bins=num_bins, islice=args.islice, nslice=args.nslice,
-                    cosmo=cosmo, auto=args.auto)
+                    cosmo=cosmo, auto=args.auto, binw_s=args.binwidth)
 
     # Initialize catalog and save dictionary
     print('- Initialize catalog')

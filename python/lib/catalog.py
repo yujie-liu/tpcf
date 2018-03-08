@@ -5,8 +5,37 @@ import numpy
 from astropy.table import Table
 from sklearn.neighbors import BallTree, KDTree
 
-# User-defined modules
-import lib.general as general
+def hist2point(hist, bins_x, bins_y, exclude_zeros=True):
+    """ Convert 2D histogram into a set of weighted data points.
+        Use bincenter as coordinate.
+        Inputs:
+        + hist: ndarray
+            2D histogram
+        + bins_x: ndarray
+            Binedges along the  x-axis
+        + bins_y: ndarray
+            Binedges along the y-axis
+        + exclude_zeros: bool (default=True)
+            If True, return non-zero weight points only.
+        Outputs:
+        + catalog: ndarrays
+            Catalog of weighted data points. Format: [X, Y, Weight]"""
+
+    # Get bins center and create a grid
+    center_x = 0.5*(bins_x[:-1]+bins_x[1:])
+    center_y = 0.5*(bins_y[:-1]+bins_y[1:])
+    grid_x, grid_y = numpy.meshgrid(center_x, center_y)
+    grid_x = grid_x.flatten()
+    grid_y = grid_y.flatten()
+
+    # Convert the grid into a catalog
+    hist = hist.T.flatten()
+    catalog = numpy.array([grid_x, grid_y, hist]).T
+
+    # Return catalog
+    if exclude_zeros:
+        return catalog[hist != 0]
+    return catalog
 
 class GalaxyCatalog(object):
     """ Class to handle galaxy catalogs. """
@@ -121,7 +150,7 @@ class GalaxyCatalog(object):
         # Set up DistrCatalog attributes
         rand = RandomCatalog()
         rand.rz_distr = numpy.array([rz_distr_w, rz_distr_uw])
-        rand.angular_distr = general.hist2point(angular_distr, bins_dec, bins_ra)
+        rand.angular_distr = hist2point(angular_distr, bins_dec, bins_ra)
         rand.bins_rz = bins_rz
         rand.bins_dec = bins_dec
         rand.bins_ra = bins_ra

@@ -18,15 +18,19 @@ class Bins(object):
         limit_d = {}
         for key, val in limit.items():
             # convert angular limit to radian
-            if key in ['dec_min', 'dec_max', 'ra_min', 'ra_max', 'theta_max']:
+            if key in ['dec_min', 'dec_max', 'ra_min', 'ra_max']:
                 limit_d[key] = numpy.deg2rad(float(val))
             elif key in ['z_min', 'z_max', 's_max']:
                 limit_d[key] = float(val)
         self.limit = {}
         self.limit['s'] = [0., limit_d['s_max']]
-        self.limit['theta'] = [0., limit_d['theta_max']]
         self.limit['dec'] = [limit_d['dec_min'], limit_d['dec_max']]
         self.limit['ra'] = [limit_d['ra_min'], limit_d['ra_max']]
+
+        # Calculate maximum angular separation
+        r_min = Cosmology.max_cosmo(cosmo).z2r(limit_d['z_min'])
+        theta_max = numpy.arccos(1.-limit_d['s_max']**2/(2*r_min**2))
+        self.limit['theta'] = [0., theta_max]
 
         # Apply z-slicing
         diff = (limit_d['z_max']-limit_d['z_min'])/nslice

@@ -1,22 +1,15 @@
 """ Plotting for NPZ output """
 
-import pickle
 import argparse
 
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
-mpl.rc('font', size=15)
+from lib.myio import load
 
-def load(fname):
-    """ Load pickle """
-    with open(fname, "rb") as f:
-        while True:
-            try:
-                yield pickle.load(f)
-            except EOFError:
-                break
+
+mpl.rc('font', size=15)
 
 def main():
     """ Main """
@@ -37,6 +30,10 @@ def main():
 
     # Read in file
     correlations = next(load(args.filenames))
+
+    if not isinstance(correlations, (list, tuple, np.ndarray)):
+        correlations = [correlations]
+
     for i, correlation in enumerate(correlations):
         # Get RR, DR, DD, tpcf and tpcfss
         rand_rand = correlation.get_distr('rr', args.weighted)

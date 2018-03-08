@@ -1,7 +1,6 @@
 """ Script for submitting jobs to calculate DD(s), DR(s), and RR(s) """
 
 # Standard Python modules
-import pickle
 import time
 import argparse
 
@@ -9,16 +8,9 @@ import argparse
 import numpy
 
 # User-defined modules
+from lib.myio import save, load
 from lib.helper import JobHelper
 
-def load(fname):
-    """ Load pickle """
-    with open(fname, "rb") as f:
-        while True:
-            try:
-                yield pickle.load(f)
-            except EOFError:
-                break
 
 def main():
     """ Main
@@ -36,16 +28,17 @@ def main():
     # Read in cmd argument
     parser = argparse.ArgumentParser(description='Divide calculation into multiple parts.')
     parser.add_argument('-p', '-P', '--prefix', type=str, help='Output prefix.')
-    parser.add_argument('-i', '-I', '--index', type=int, help='Index of job. Start from 0 to N-1.')
-    parser.add_argument('-n', '-N', '--total', type=int, help='Total number of jobs.')
+    parser.add_argument('-i', '-I', '--ijob', type=int, default=0,
+                        help='Index of job. From 0 to N-1.')
+    parser.add_argument('-n', '-N', '--njob', type=int, default=1, help='Total number of jobs.')
     parser.add_argument('-t', '-T', '--time', action='store_true', default=False,
                         help='Enable save runtime.')
     parser.add_argument('--version', action='version', version='KITCAT 1.10')
     args = parser.parse_args()
 
     # Set job helper
-    job_helper = JobHelper(args.total)
-    job_helper.set_current_job(args.index)
+    job_helper = JobHelper(args.njob)
+    job_helper.set_current_job(args.ijob)
 
     # Set timer
     timer = {'dd': None, 'dr': None, 'rr': None}
@@ -103,9 +96,7 @@ def main():
         runtime = [timer['rr'], timer['dr'], timer['dd']]
         numpy.savetxt("{}_timer.txt".format(args.prefix), runtime, header='RR(s)  DR(s)  DD(s)')
 
-    pickle_out = open("{}_divide_{:03d}.pkl".format(args.prefix, args.index), "wb")
-    pickle.dump(correlation, pickle_out, protocol=-1)
-    pickle_out.close()
+    save("{}_divide_{:03d}.pkl".format(args.prefix, args.ijob), correlation)
 
 
 if __name__ == "__main__":
