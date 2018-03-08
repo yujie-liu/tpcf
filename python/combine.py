@@ -11,18 +11,20 @@ from lib.correlation import Correlation
 
 
 def main():
-    """ Main
-    Args: output prefix """
-    print("COMBINE module")
+    """ Combine jobs and calculate DD, DR, RR, and tpcf """
 
     # Read in cmd argument
     parser = argparse.ArgumentParser(
         description='Combine child calculation to produce two-point correlation function')
     parser.add_argument('-c', '-C', '--cosmology', type=str, default=None,
                         help='Path to cosmology configuration file.')
-    parser.add_argument('-p', '-P', '--prefix', type=str, help='Output prefix.')
+    parser.add_argument('-p', '-P', '--prefix', type=str, help='Run prefix.')
+    parser.add_argument('-o', '-O', '--output', type=str, default=None,
+                        help='Name of output .pkl. If not specific, use PREFIX_output.pkl')
     parser.add_argument('--version', action='version', version='KITCAT 1.10')
     args = parser.parse_args()
+
+    print("COMBINE module")
 
     # Read in helper from pickles
     fname_list = sorted(glob.glob("{}_divide_*.pkl".format(args.prefix)))
@@ -74,7 +76,14 @@ def main():
             # Set up and calculate correlation function
             tpcf = Correlation(data_data, data_rand, rand_rand, helper.bins.bins('s'), helper.norm)
             tpcf_list[i] = tpcf
-        save('{}_output.pkl'.format(args.prefix), tpcf_list)
+
+        # Save output
+        if args.output is None:
+            save('{}_output.pkl'.format(args.prefix), tpcf_list)
+        else:
+            if not args.output.endswith('.pkl'):
+                args.output += '.pkl'
+            save(args.output, tpcf_list)
 
 
 if __name__ == "__main__":

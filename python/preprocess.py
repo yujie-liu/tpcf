@@ -11,23 +11,25 @@ from lib.helper import CorrelationHelper
 from lib.bins import Bins
 
 def main():
-    """ Convert FITS into Catalog object """
-    print("PREPROCESS module")
+    """ Convert .fits catalogs and other binning, cosmology information into data structures. """
 
     # Read in cmd argument
     parser = argparse.ArgumentParser(description='Preprocess galaxy and random catalogs.')
     parser.add_argument('-c', '-C', '--config', type=str, help='Path to configuration file.')
-    parser.add_argument('-p', '-P', '--prefix', type=str, help='Output prefix.')
-    parser.add_argument('-a', '-A', '--auto', action='store_true', default=False,
-                        help='Set automatical binning')
-    parser.add_argument('-b', '-B', '--binwidth', type=float, default=4.00,
-                        help='Binwidth of separation. Enable only if auto is True.')
+    parser.add_argument('-p', '-P', '--prefix', type=str,
+                        help='Output prefix. Preprocess output is saved as PREFIX_preprocess.pkl')
     parser.add_argument('-i', '-I', '--islice', type=int, default=0,
                         help='Index of Z-slice. From 0 to N-1.')
     parser.add_argument('-n', '-N', '--nslice', type=int, default=1,
                         help='Total number of Z-slices.')
+    parser.add_argument('-a', '-A', '--auto', action='store_true', default=False,
+                        help='Set automatic binning')
+    parser.add_argument('-b', '-B', '--binwidth', type=float, default=4.00,
+                        help='Binwidth of separation. Enable only if auto is True.')
     parser.add_argument('--version', action='version', version='KITCAT 1.10')
     args = parser.parse_args()
+
+    print("PREPROCESS module")
 
     # Check arguments
     if args.islice < 0 or args.islice >= args.nslice:
