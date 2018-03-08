@@ -83,7 +83,7 @@ The following command:
 will use configuration file at "/path/to/sample_config.cfg". Divide catalogs into 3 redshift slice (z-slice) and process the first slice. The preprocess output will be "sample_run_preprocess.py". 
 
 ### Divide
-Calculate f($\theta$), g($\theta$, z) and DD(s) from preprocess output. This is the most computationally-expensive part of the algorithm. The calculation can be divided into multiple equal-sized child processes. Note: skip the calculation of DD(s) if multiple cosmological models are given in configuration file in PREPROCESS. 
+Calculate f(theta), g(theta, z) and DD(s) from preprocess output. This is the most computationally-expensive part of the algorithm. The calculation can be divided into multiple equal-sized child processes. Note: skip the calculation of DD(s) if multiple cosmological models are given in configuration file in PREPROCESS. 
 
 Options:
     
@@ -114,7 +114,9 @@ To perform the calculation without dividing jobs. Simple run
 ```
 
 ### Combine
-Combine child processes and perform integration over f($\theta$), g($\theta$, r) and P(r) to calculate RR(s), DR(s) and DD(s) (if not already calculated in DIVIDE). Also calculate the two-point correlation function using the Landy-Szalay estimators.
+Combine child processes and perform integration over f(theta), g(theta, r) and P(r) to calculate RR(s), DR(s) and DD(s) (if not already calculated in DIVIDE). Also calculate the t
+
+o-point correlation function using the Landy-Szalay estimators.
 
 Options:
     
@@ -177,7 +179,7 @@ Configuration parameters to read galaxy and random catalogs in .fits format.
     - WEIGHT_NOZ (optional): Name of the column that contains the weight due to redshift failure (unable to resolve galaxy redshifts).
     - WEIGHT_CP (optional): Name of the column that contains the weight due to close-pair fiber collision. 
 
-The implementation will search for the key WEIGHT first. If not found, will search for WEIGHT_FKP, WEIGHT_SDC, WEIGHT_NOZ, and WEIGHT_CP and calculate the total weight using the formula: $w = w_{fkp} \times w_{sdc} \times(w_{noz}+w_{cp}-1)$
+The implementation will search for the key WEIGHT first. If not found, will search for WEIGHT_FKP, WEIGHT_SDC, WEIGHT_NOZ, and WEIGHT_CP and calculate the total weight using the formula: w = w_fkp*w_sdc*(w_noz+w_cp-1)
 
 ### NBINS Section
 Configuration parameters for the number of bins of the two-point correlation function, and the redshift and angular distribution of the random catalog. Angular variables (RA, DEC, THETA) have unit of degree. Spatial separation have unit of Mpc/h.
