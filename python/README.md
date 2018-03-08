@@ -54,8 +54,10 @@ Convert galaxy catalog, random catalog, and other parameters (i.e. binnings, cos
 If only one cosmological model is specified, then apply the cosmology at the first step and compute comoving distribution instead of redshift distribution.
                      
 Options:
+    
     - Show help message and exit: 
             -h, --help
+    
     - Path to configuration file: 
             -c CONFIG, -C CONFIG, --config CONFIG
     - Output prefix:
@@ -83,6 +85,7 @@ will use configuration file at "/path/to/sample_config.cfg". Divide catalogs int
 Calculate f($\theta$), g($\theta$, z) and DD(s) from preprocess output. This is the most computationally-expensive part of the algorithm. The calculation can be divided into multiple equal-sized child processes. Note: skip the calculation of DD(s) if multiple cosmological models are given in configuration file in PREPROCESS. 
 
 Options:
+    
     - Show help message and exit: 
             -h, --help
     - Run prefix:
@@ -113,6 +116,7 @@ To perform the calculation without dividing jobs. Simple run
 Combine child processes and perform integration over f($\theta$), g($\theta$, r) and P(r) to calculate RR(s), DR(s) and DD(s) (if not already calculated in DIVIDE). Also calculate the two-point correlation function using the Landy-Szalay estimators.
 
 Options:
+    
     - Show help message and exit: 
             -h, --help
     - Run prefix:
@@ -138,6 +142,7 @@ Below are the configuration parameters for each section. Note that configuration
 
 ### GALAXY and RANDOM Section
 Configuration parameters to read galaxy and random catalogs in .fits format.
+    
     - PATH: Path to the .fits file that contains the galaxy catalog.
     - DEC: Name of the column that contains declination (DEC).
     - RA: Name of the column that contains right ascension (RA).
@@ -152,6 +157,7 @@ The implementation will search for the key WEIGHT first. If not found, will sear
 
 ### NBINS Section
 Configuration parameters for the number of bins of the two-point correlation function, and the redshift and angular distribution of the random catalog. Angular variables (RA, DEC, THETA) have unit of degree. Spatial separation have unit of Mpc/h.
+    
     - DEC: number of bins for declination for the random angular distribution R(ra, dec).
     - RA: number of bins for right ascension for the random angular distribution R(ra, dec).
     - THETA: binwidth of the pairwise angular distribution f($\theta$) and g($\theta$, r).
@@ -160,6 +166,7 @@ Configuration parameters for the number of bins of the two-point correlation fun
 
 ### LIMIT Section
 Configuration parameters for the sample limit of the survey catalog. If the bounds envelope the catalog, then full catalog will be consider. Angular variables (RA, DEC, THETA) have unit of degree. Separation have unit of Mpc/h.
+    
     - DEC_MIN: Minimimum declination. 
     - DEC_MAX: Maximimum declination.
     - RA_MIN: Minimum right ascension.
@@ -170,16 +177,17 @@ Configuration parameters for the sample limit of the survey catalog. If the boun
 
 ### COSMOLOGY Section: 
 Cosmological parameters to convert redshift to comoving distance. 
+    
     - HUBBLE0: Hubble constant at present (z=0).
     - OMEGA_M0: Relative density of matter at present (z=0).
     - OMEGA_DE0: Relative density of dark energy at present (z=0).
 
 To specify multiple cosmological models, separate the parameters of each model with a comma. For example, the following configuration
-```
-    HUBBLE0 = 67, 72, 100
-    OMEGA_M0 = 0.3, 0.4, 0.5
-    OMEGA_DE0 = 0.7 0.6, 0.5
-```
+    
+    - HUBBLE0 = 67, 72, 100
+    - OMEGA_M0 = 0.3, 0.4, 0.5
+    - OMEGA_DE0 = 0.7 0.6, 0.5
+
 will read in three cosmological models with Hubble constant 67, 72, 100; relative matter density 0.3, 0.4, 0.5; relative dark energy density 0.7, 0.6, 0.5 respectively.
 
 ## Contributing
