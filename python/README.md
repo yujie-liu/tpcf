@@ -10,6 +10,7 @@ A Python implementation of the algorithm described in [A Computationally Efficie
   * [Preprocess](#preprocess)
   * [Divide Job](#divide)
   * [Combine Job](#combine)
+  * [Plotting Output](#fast_plot)
 - [Configuration File](#configuration-file)
   * [GALAXY Section](#galaxy-section)
   * [RANDOM Section](#random-section)
@@ -131,9 +132,32 @@ Options:
 Example:
 The following command
 ```
-    python combine.py --prefix=/path/to/sample_run --output=/path/to/output 
+    python3 combine.py --prefix=/path/to/sample_run --output=/path/to/output 
 ```
 will combine all child processes with prefix "/path/to/sample_run_divide_IJOB.pkl". The output RR(s), DR(s), DD(s), and two-point correlation will be stored at "/path/to/output.pkl".
+
+### Plotting Output
+A quick Python script is provided to quickly plot DD(s), DR(s), RR(s), and the two-point correlatio output from COMBINE.
+
+Options:
+
+    - Show help message and exit: 
+            -h, --help
+    - Enable plotting unweighted distribution:
+            -u, -U, --unweighted
+    - Enable plotting error bar
+            -e, -E, --error
+    - Path to output file. If not specified, output is not saved and plot is show instead:
+            -o OUTPUT, -O OUTPUT, --output OUTPUT
+    - Show program's version number and exit: 
+            --version
+
+Example:
+The following command
+```
+    python3 fast_plot.py /path/to/output.pkl --output=/path/to/output.png
+```
+will plot output from "/path/to/output.pkl" and save plot to "/path/to/output.png"
 
 ## Configuration File
 This implementation uses Python ConfigParser to read in configuration file. More details on ConfigParser can be found at https://docs.python.org/3/library/configparser.html.

@@ -19,7 +19,7 @@ def main():
         description='Fast plotting for two-point correlation function.')
     parser.add_argument('filenames', type=str, help='Path to two-point correlation function.')
     parser.add_argument('-w', '-W', '--weighted', action='store_true', default=True)
-    parser.add_argument('-s', '-S', '--save', type=str, default=None,
+    parser.add_argument('-o', '-O', '--output', type=str, default=None,
                         help='Path to save plot output. Disable showing plot.')
     parser.add_argument('-e', '-E', '--error', action='store_true', default=False)
     parser.add_argument('--version', action='version', version='KITCAT 1.10')
@@ -76,8 +76,8 @@ def main():
     fig.tight_layout()
 
     # Save plot or show plot
-    if args.save is not None:
-        plt.savefig('{}'.format(args.save), bbox_inches='tight')
+    if args.output is not None:
+        plt.savefig('{}'.format(args.output), bbox_inches='tight')
     else:
         plt.show()
 
