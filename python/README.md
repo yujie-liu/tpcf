@@ -10,7 +10,7 @@ A Python implementation of the algorithm described in [A Computationally Efficie
   * [Preprocess](#preprocess)
   * [Divide Job](#divide)
   * [Combine Job](#combine)
-  * [Plotting Output](#fast_plot)
+  * [Plot Output](#plot_output)
 - [Configuration File](#configuration-file)
   * [GALAXY Section](#galaxy-section)
   * [RANDOM Section](#random-section)
@@ -143,7 +143,7 @@ The following command
 ```
 will combine all child processes with prefix "/path/to/sample_run_divide_IJOB.pkl". The output RR(s), DR(s), DD(s), and two-point correlation will be stored at "/path/to/output.pkl".
 
-### Plotting Output
+### Plot Output
 A quick Python script is provided to quickly plot DD(s), DR(s), RR(s), and the two-point correlatio output from COMBINE.
 
 Options:

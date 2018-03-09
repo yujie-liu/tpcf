@@ -30,7 +30,7 @@ class Correlation(object):
         """ Get distribution """
         if weighted:
             return self.w_distr[key]
-        return self.uw_distr[key]
+        return self.u_distr[key]
 
     def distr_error(self, w_distr, uw_distr):
         """ Get statistical bin error of separation distribution

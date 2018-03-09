@@ -43,8 +43,7 @@ def main():
         data_data = helper.get_dd()
         rand_rand, data_rand = helper.get_rr_dr()
         tpcf = Correlation(data_data, data_rand, rand_rand, helper.bins.bins('s'), helper.norm)
-        save('{}_output.pkl'.format(args.prefix), tpcf)
-
+        tpcf_list = [tpcf]
     else:
         # If cosmology is not set previously
         loader = next(load('{}_preprocess.pkl'.format(args.prefix)))
@@ -77,13 +76,13 @@ def main():
             tpcf = Correlation(data_data, data_rand, rand_rand, helper.bins.bins('s'), helper.norm)
             tpcf_list[i] = tpcf
 
-        # Save output
-        if args.output is None:
-            save('{}_output.pkl'.format(args.prefix), tpcf_list)
-        else:
-            if not args.output.endswith('.pkl'):
-                args.output += '.pkl'
-            save(args.output, tpcf_list)
+    # Save output
+    if args.output is None:
+        save('{}_output.pkl'.format(args.prefix), tpcf_list)
+    else:
+        if not args.output.endswith('.pkl'):
+            args.output += '.pkl'
+        save(args.output, tpcf_list)
 
 
 if __name__ == "__main__":

@@ -18,7 +18,7 @@ def main():
     parser = argparse.ArgumentParser(
         description='Fast plotting for two-point correlation function.')
     parser.add_argument('filenames', type=str, help='Path to two-point correlation function.')
-    parser.add_argument('-w', '-W', '--weighted', action='store_true', default=True)
+    parser.add_argument('-w', '-W', '--weighted', action='store_true', default=False)
     parser.add_argument('-o', '-O', '--output', type=str, default=None,
                         help='Path to save plot output. Disable showing plot.')
     parser.add_argument('-e', '-E', '--error', action='store_true', default=False)
@@ -30,9 +30,6 @@ def main():
 
     # Read in file
     correlations = next(load(args.filenames))
-
-    if not isinstance(correlations, (list, tuple, np.ndarray)):
-        correlations = [correlations]
 
     for i, correlation in enumerate(correlations):
         # Get RR, DR, DD, tpcf and tpcfss
