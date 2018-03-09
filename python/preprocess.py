@@ -1,6 +1,7 @@
 """ Module to create preprocessed catalog object"""
 
 # Standard Python module
+import os
 import configparser
 import argparse
 
@@ -24,7 +25,7 @@ def main():
                         help='Total number of Z-slices.')
     parser.add_argument('-a', '-A', '--auto', action='store_true', default=False,
                         help='Set automatic binning')
-    parser.add_argument('-b', '-B', '--binwidth', type=float, default=4.00,
+    parser.add_argument('-b', '-B', '--binwidth', type=float, default=2.00,
                         help='Binwidth of separation. Enable only if auto is True.')
     parser.add_argument('--version', action='version', version='KITCAT 1.10')
     args = parser.parse_args()
@@ -37,7 +38,7 @@ def main():
 
     # Read from configuration file
     print('- Reading configuration file from {}'.format(args.config))
-    config = configparser.SafeConfigParser()
+    config = configparser.RawConfigParser(os.environ)
     config.read(args.config)
 
     # Read in cosmology
