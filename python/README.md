@@ -46,6 +46,11 @@ Clone the repository:
     git clone https://github.com/sybenzvi/tpcf/tree/tribranch 
 ```
 
+To install all the requirements with pip, simply run:
+```
+    pip3 install -r requirements.txt
+```
+
 ## Running
 This implementation has three stages of running: Preprocess, Divide, and Combine.
 
