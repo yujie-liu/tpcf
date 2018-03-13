@@ -291,7 +291,7 @@ class GalaxyCatalog(object):
         else:
             raise ValueError('Metric must be either "haversine" or "euclidean".')
 
-        print("Creating BallTree with metric {}".format(metric))
+        print("- Creating BallTree with metric {}".format(metric))
 
         # Return KD-tree and the catalog
         if return_catalog:
@@ -349,7 +349,7 @@ class RandomCatalog(object):
             node is guaranteed to satisfy leaf_size <= n_points <= 2*leaf_size,
             except in the case that n_samples < leaf_size.
             More details can be found at sklearn.neightbors.BallTree."""
-        print("Creating BallTree")
+        print("- Creating BallTree")
         balltree = BallTree(self.angular_distr[:, :2], leaf_size=leaf, metric='haversine')
         if return_catalog:
             return balltree, self.angular_distr
