@@ -30,6 +30,7 @@ Installation and running instructions.
 
 ### Requirements
 Python requirements:
+* [Python](https://www.python.org/) (version 3.5.2)
 * [AstroPy](http://www.astropy.org) (version 1.2.1)
 * [NumPy](http://www.numpy.org) (version 1.13.1)
 * [SciPy](https://github.com/scipy/scipy) (version 0.19.1)
