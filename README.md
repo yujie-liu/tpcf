@@ -43,7 +43,7 @@ The sample configurations file rely on DR9-SDSS BOSS survey:
 ### Installing
 Clone the repository:
 ```
-    git clone https://github.com/sybenzvi/tpcf/tree/tribranch 
+    git clone -b tribranch https://github.com/sybenzvi/tpcf.git
 ```
 
 To install all the requirements with pip, simply run:
