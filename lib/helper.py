@@ -45,7 +45,7 @@ class JobHelper(object):
 
 class CorrelationHelper(object):
     """ Class to handle multiprocess correlation function calculation """
-    def __init__(self, bins, cosmo=None):
+    def __init__(self, bins, cosmo_list):
         """ Constructor set up attributes """
 
         # Initialize binnings
@@ -55,13 +55,14 @@ class CorrelationHelper(object):
         self.norm = {"dd": None, "dr": None, "rr": None}
 
         # Initialize histogram
-        self.data_data = numpy.zeros((2, self.bins.nbins('s')))
-        self.theta_distr = numpy.zeros(self.bins.nbins('theta'))
-        self.rz_theta_distr = numpy.zeros((2, self.bins.nbins('theta'), self.bins.nbins('z')))
+        self.data_data = numpy.zeros((2, bins.nbins('s')))
+        self.theta_distr = numpy.zeros(bins.nbins('theta'))
+        self.rz_theta_distr = numpy.zeros((2, bins.nbins('theta'), bins.nbins('z')))
         self.rz_distr = None
 
         # Initalize cosmology
-        self.cosmo = cosmo
+        self.cosmo_list = cosmo_list
+        self.n_cosmo = len(cosmo_list)
 
     def set_rz_distr(self, rz_distr):
         """ Setting up P(r) """
@@ -190,9 +191,9 @@ class CorrelationHelper(object):
         theta_max = self.bins.max('theta')
         rz_min = self.bins.min('z')
         rz_max = self.bins.max('z')
-        if self.cosmo is not None:
-            rz_min = self.cosmo.z2r(rz_min)
-            rz_max = self.cosmo.z2r(rz_max)
+        if self.n_cosmo == 1:
+            rz_min = self.cosmo_list[0].z2r(rz_min)
+            rz_max = self.cosmo_list[0].z2r(rz_max)
         limit = ((0., theta_max), (rz_min, rz_max))
 
         print("- Construct angular-comoving from index {} to {}".format(start, end-1))
@@ -251,7 +252,7 @@ class CorrelationHelper(object):
         print("- Calculate DD(s)")
         return self.data_data
 
-    def get_rr(self, cosmo=None):
+    def get_rr(self):
         """ Calculate and return RR(s) """
         if self.rz_distr is None:
             return RuntimeError("Redshift/comoving distribution is None.")
@@ -259,39 +260,35 @@ class CorrelationHelper(object):
         print("- Calculate RR(s)")
 
         # Initialize separation distribution and binning
-        rand_rand = numpy.zeros((2, self.bins.nbins('s')))
+        rand_rand = numpy.zeros((self.n_cosmo, 2, self.bins.nbins('s')))
 
-        # Set up binnings
         # Angular separation bins
         bins_theta = self.bins.bins('theta')
-
-        # Apply cosmology to calculate comoving bins
-        if self.cosmo is None:
-            if cosmo is not None:
-                bins_r = cosmo.z2r(self.bins.bins('z'))  # Uniform over 'z', NOT 'r'
-            else:
-                raise TypeError('No input cosmology found.')
-        else:
-            bins_r = self.bins.bins('z', self.cosmo) # Uniform over 'r'
-
-        # Take the bins center
         bins_theta = 0.5*(bins_theta[:-1]+bins_theta[1:])
-        bins_r = 0.5*(bins_r[:-1]+bins_r[1:])
 
         # Calculate 4-dimensional weights matrix
         weights = (self.rz_distr[:, None, :, None]*self.rz_distr[:, None, None, :]
                    *self.theta_distr[None, :, None, None])
 
-        # Calculate 3-dimensional separation matrix
-        dist = distance(bins_theta[:, None, None], bins_r[None, :, None], bins_r[None, None, :])
+        for i, cosmo in enumerate(self.cosmo_list):
+            # Apply cosmology to calculate comoving bins
+            if self.n_cosmo == 1:
+                bins_r = self.bins.bins('z', cosmo)  # Uniform over 'r'
+            else:
+                bins_r = cosmo.z2r(self.bins.bins('z'))  # Uniform over 'z', NOT 'r'
+            bins_r = 0.5*(bins_r[:-1]+bins_r[1:])
 
-        # Calculate RR(s) by histograming
-        for i in range(2):
-            rand_rand[i], _ = numpy.histogram(dist, bins=self.bins.bins('s'), weights=weights[i])
+            # Calculate 3-dimensional separation matrix
+            dist = distance(bins_theta[:, None, None], bins_r[None, :, None], bins_r[None, None, :])
 
+            # Calculate RR
+            rand_rand[i][0], _ = numpy.histogram(dist, bins=self.bins.bins('s'), weights=weights[0])
+            rand_rand[i][1], _ = numpy.histogram(dist, bins=self.bins.bins('s'), weights=weights[1])
+
+        rand_rand = numpy.squeeze(rand_rand)
         return rand_rand
 
-    def get_dr(self, cosmo=None):
+    def get_dr(self):
         """ Calculate and return DR(s) """
         if self.rz_distr is None:
             raise RuntimeError("Comoving distribution is None.")
@@ -299,77 +296,73 @@ class CorrelationHelper(object):
         print("- Calculate DR(s)")
 
         # Initialize separation distribution and binning
-        data_rand = numpy.zeros((2, self.bins.nbins('s')))
+        data_rand = numpy.zeros((self.n_cosmo, 2, self.bins.nbins('s')))
 
-        # Set up binnings
         # Angular separation bins
         bins_theta = self.bins.bins('theta')
-
-        # Apply cosmology to calculate comoving bins
-        if self.cosmo is None:
-            if cosmo is not None:
-                bins_r = cosmo.z2r(self.bins.bins('z'))  # Uniform over 'z', NOT 'r'
-            else:
-                raise TypeError('No input cosmology found.')
-        else:
-            bins_r = self.bins.bins('z', self.cosmo) # Uniform over 'r'
-
-        # Take the bins center
         bins_theta = 0.5*(bins_theta[:-1]+bins_theta[1:])
-        bins_r = 0.5*(bins_r[:-1]+bins_r[1:])
 
-        # Construct a 4d matrix for weights
+        # Calculate 4-dimensional weights matrix
         weights = self.rz_distr[:, None, None, :]*self.rz_theta_distr[:, :, :, None]
 
-        # Construct a 3d matrix for pairing
-        dist = distance(bins_theta[:, None, None], bins_r[None, :, None], bins_r[None, None, :])
+        for i, cosmo in enumerate(self.cosmo_list):
+            # Apply cosmology to calculate comoving bins
+            if self.n_cosmo == 1:
+                bins_r = self.bins.bins('z', cosmo)  # Uniform over 'r'
+            else:
+                bins_r = cosmo.z2r(self.bins.bins('z'))  # Uniform over 'z', NOT 'r'
+            bins_r = 0.5*(bins_r[:-1]+bins_r[1:])
 
-        # Construct DR(s)
-        for i in range(2):
-            data_rand[i], _ = numpy.histogram(dist, bins=self.bins.bins('s'), weights=weights[i])
+            # Calculate 3-dimensional separation matrix
+            dist = distance(bins_theta[:, None, None], bins_r[None, :, None], bins_r[None, None, :])
 
+            # Calculate DR
+            data_rand[i][0], _ = numpy.histogram(dist, bins=self.bins.bins('s'), weights=weights[0])
+            data_rand[i][1], _ = numpy.histogram(dist, bins=self.bins.bins('s'), weights=weights[1])
+
+        data_rand = numpy.squeeze(data_rand)
         return data_rand
 
-    def get_rr_dr(self, cosmo=None):
+    def get_rr_dr(self):
         """ Calculate and return RR(s) and DR(s) """
         if self.rz_distr is None:
             return RuntimeError("Redshift/comoving distribution is None.")
 
-        # Initialize separation distribution and binning
-        rand_rand = numpy.zeros((2, self.bins.nbins('s')))
-        data_rand = numpy.zeros((2, self.bins.nbins('s')))
+        print("- Calculate RR(s) and DR(s)")
 
-        # Set up binnings
+        # Initialize separation distribution and binning
+        rand_rand = numpy.zeros((self.n_cosmo, 2, self.bins.nbins('s')))
+        data_rand = numpy.zeros((self.n_cosmo, 2, self.bins.nbins('s')))
+
         # Angular separation bins
         bins_theta = self.bins.bins('theta')
-
-        # Apply cosmology to calculate comoving bins
-        if self.cosmo is None:
-            if cosmo is not None:
-                bins_r = cosmo.z2r(self.bins.bins('z'))  # Uniform over 'z', NOT 'r'
-            else:
-                raise TypeError('No input cosmology found.')
-        else:
-            bins_r = self.bins.bins('z', self.cosmo) # Uniform over 'r'
-
-        # Take the bins center
         bins_theta = 0.5*(bins_theta[:-1]+bins_theta[1:])
-        bins_r = 0.5*(bins_r[:-1]+bins_r[1:])
 
         # Calculate 4-dimensional weights matrix
         weights_rr = (self.rz_distr[:, None, :, None]*self.rz_distr[:, None, None, :]
                       *self.theta_distr[None, :, None, None])
         weights_dr = self.rz_distr[:, None, None, :]*self.rz_theta_distr[:, :, :, None]
 
-        # Calculate 3-dimensional separation matrix
-        dist = distance(bins_theta[:, None, None], bins_r[None, :, None], bins_r[None, None, :])
+        for i, cosmo in enumerate(self.cosmo_list):
+            # Apply cosmology to calculate comoving bins
+            if self.n_cosmo == 1:
+                bins_r = self.bins.bins('z', cosmo)  # Uniform over 'r'
+            else:
+                bins_r = cosmo.z2r(self.bins.bins('z'))  # Uniform over 'z', NOT 'r'
+            bins_r = 0.5*(bins_r[:-1]+bins_r[1:])
 
-        # Calculate RR(s) and DR(s) by histograming
-        print("- Calculate RR(s) and DR(s)")
-        for i in range(2):
-            rand_rand[i], _ = numpy.histogram(
-                dist, bins=self.bins.bins('s'), weights=weights_rr[i])
-            data_rand[i], _ = numpy.histogram(
-                dist, bins=self.bins.bins('s'), weights=weights_dr[i])
+            # Calculate 3-dimensional separation matrix
+            dist = distance(bins_theta[:, None, None], bins_r[None, :, None], bins_r[None, None, :])
 
+            # Calculate RR and DR
+            rand_rand[i][0], _ = numpy.histogram(dist, bins=self.bins.bins('s'),
+                                                 weights=weights_rr[0])
+            rand_rand[i][1], _ = numpy.histogram(dist, bins=self.bins.bins('s'),
+                                                 weights=weights_rr[1])
+            data_rand[i][0], _ = numpy.histogram(dist, bins=self.bins.bins('s'),
+                                                 weights=weights_dr[0])
+            data_rand[i][1], _ = numpy.histogram(dist, bins=self.bins.bins('s'),
+                                                 weights=weights_dr[1])
+        rand_rand = numpy.squeeze(rand_rand)
+        data_rand = numpy.squeeze(data_rand)
         return rand_rand, data_rand

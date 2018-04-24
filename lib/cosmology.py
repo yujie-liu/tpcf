@@ -115,23 +115,31 @@ class Cosmology():
         return self.r2z(self.z2r(z_min)+delta_s)-z_min
 
     @staticmethod
-    def min_cosmo(cosmo_list):
+    def min_cosmo(cosmo_list, return_index=False):
         """ Find cosmology with the minimum value of Omega_m0 """
         min_value = 100000 # sentinel value
         min_cosmo = None
-        for cosmo in cosmo_list:
+        index = None
+        for i, cosmo in enumerate(cosmo_list):
             if cosmo.model.Om0 <= min_value:
                 min_value = cosmo.model.Om0
                 min_cosmo = cosmo
+                index = i
+        if return_index:
+            return min_cosmo, index
         return min_cosmo
 
     @staticmethod
-    def max_cosmo(cosmo_list):
+    def max_cosmo(cosmo_list, return_index=False):
         """ Find cosmology with the maximum value of Omega_m0 """
         max_value = -100000 # sentinel value
         max_cosmo = None
-        for cosmo in cosmo_list:
+        index = None
+        for i, cosmo in enumerate(cosmo_list):
             if cosmo.model.Om0 >= max_value:
                 max_value = cosmo.model.Om0
                 max_cosmo = cosmo
+                index = i
+        if return_index:
+            return max_cosmo, index
         return max_cosmo

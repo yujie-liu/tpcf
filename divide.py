@@ -50,7 +50,7 @@ def main():
     correlation = loader['helper']
 
     # Calculate DD(s) if cosmology is given
-    if correlation.cosmo is not None:
+    if correlation.n_cosmo == 1:
         # Keeping track of time
         start_time = time.time()
 

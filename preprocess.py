@@ -44,33 +44,31 @@ def main():
     # Read in cosmology
     print('- Setting up cosmological models')
     cosmo_list = read_cosmology(config['COSMOLOGY'])
-    cosmo = None if len(cosmo_list) > 1 else cosmo_list[0]
-    print('- Number of models: {}'.format(len(cosmo_list)))
+    n_cosmo = len(cosmo_list)
+    print('- Number of models: {}'.format(n_cosmo))
 
     # Read in binning scheme
     num_bins = None if args.auto else config['NBINS']
-    if cosmo is None:
-        bins = Bins(config['LIMIT'], num_bins=num_bins, islice=args.islice, nslice=args.nslice,
-                    cosmo=cosmo_list, auto=args.auto, binw_s=args.binwidth)
-    else:
-        bins = Bins(config['LIMIT'], num_bins=num_bins, islice=args.islice, nslice=args.nslice,
-                    cosmo=cosmo, auto=args.auto, binw_s=args.binwidth)
+    bins = Bins(config['LIMIT'], num_bins=num_bins, islice=args.islice, nslice=args.nslice,
+                cosmo=cosmo_list, auto=args.auto, binw_s=args.binwidth)
 
     # Initialize catalog and save dictionary
     print('- Initialize catalog')
     data = GalaxyCatalog(config['GALAXY'], bins.limit) # data catalog
     rand = GalaxyCatalog(config['RANDOM'], bins.limit) # random catalog
-    rand = rand.to_rand(bins.limit, bins.num_bins, cosmo)
+    if n_cosmo > 1:
+        rand = rand.to_rand(bins.limit, bins.num_bins)
+    else:
+        rand = rand.to_rand(bins.limit, bins.num_bins, cosmo_list[0])
     save_dict = {'dd': None, 'dr': None, 'rr': None, 'helper': None}
-    if cosmo is None:
-        save_dict['cosmo_list'] = cosmo_list
 
     # Create a kd-tree for DD calculation and pickle
     print('- Setting up DD')
-    if cosmo is None:
+    if n_cosmo > 1:
         save_dict['dd'] = data
     else:
-        tree, catalog = data.build_balltree(metric='euclidean', cosmo=cosmo, return_catalog=True)
+        tree, catalog = data.build_balltree(metric='euclidean', cosmo=cosmo_list[0],
+                                            return_catalog=True)
         save_dict['dd'] = {'tree': tree, 'catalog': catalog}
 
     # Create a balltree for f(theta), RR calculation and pickle
@@ -87,13 +85,19 @@ def main():
         # Tree from Data, catalog from Random
         tree = data.build_balltree(metric='haversine', return_catalog=False)
         mode = 'data_tree'
-    save_dict['dr'] = {'tree': tree,
-                       'data_catalog': data.get_catalog(cosmo),
-                       'angular_catalog': catalog,
-                       'mode': mode}
+    if n_cosmo > 1:
+        save_dict['dr'] = {'tree': tree,
+                           'data_catalog': data.get_catalog(),
+                           'angular_catalog': catalog,
+                           'mode': mode}
+    else:
+        save_dict['dr'] = {'tree': tree,
+                           'data_catalog': data.get_catalog(cosmo_list[0]),
+                           'angular_catalog': catalog,
+                           'mode': mode}
 
     # Save helper object
-    helper = CorrelationHelper(bins, cosmo)
+    helper = CorrelationHelper(bins, cosmo_list)
     helper.set_rz_distr(rand.rz_distr)
     helper.set_norm(norm_dd=data.norm(), norm_dr=rand.norm(data), norm_rr=rand.norm())
     save_dict['helper'] = helper

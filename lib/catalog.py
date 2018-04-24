@@ -34,7 +34,9 @@ def hist2point(hist, bins_x, bins_y, exclude_zeros=True):
 
     # Return catalog
     if exclude_zeros:
-        return catalog[hist != 0]
+        zeros = (hist == 0)
+        print('    + Discarding {} zero bins.'.format(numpy.sum(zeros)))
+        return catalog[numpy.logical_not(zeros)]
     return catalog
 
 class GalaxyCatalog(object):
@@ -64,7 +66,7 @@ class GalaxyCatalog(object):
             Keys: path, dec, ra, z. Values format: str """
 
         # Read in configuration file
-        print("Import catalog from: {}".format(reader['path']))
+        print("    + Import catalog from: {}".format(reader['path']))
 
         # Read in table
         table = Table.read(reader['path'])
@@ -258,6 +260,22 @@ class GalaxyCatalog(object):
 
         return w_norm, uw_norm
 
+    def to_cartesian(self, cosmo):
+        """ Return galaxy catalog in Cartesian coordinates
+        Inputs:
+        + cosmo: cosmology.Cosmology (default=None)
+            Cosmology model to convert redshift to comoving.
+        Outputs:
+        + catalog: numpy.ndarray
+            Galaxy catalog in Cartesian coordinate system. """
+        dec, ra, z = self.catalog[:, :3].T
+        r = cosmo.z2r(z)
+        catalog = numpy.array([r*numpy.cos(dec)*numpy.cos(ra),
+                               r*numpy.cos(dec)*numpy.sin(ra),
+                               r*numpy.sin(dec),
+                               self.catalog[:, 3]]).T
+        return catalog
+
     def build_balltree(self, metric, cosmo=None, return_catalog=False, leaf=40):
         """ Build a balltree from catalog. If metric is 'euclidean', cosmology is required.
         Inputs:
@@ -268,7 +286,7 @@ class GalaxyCatalog(object):
         + return_catalog: bool (default=False)
             If True, return the catalog in balltree
         + cosmo: cosmology.Cosmology (default=None)
-            Cosmology model to convert comoving to redshift.
+            Cosmology model to convert redshift to comoving.
         + leaf: int (default=40)
             Number of points at which KD-tree switches to brute-force. A leaf
             node is guaranteed to satisfy leaf_size <= n_points <= 2*leaf_size,
@@ -278,12 +296,7 @@ class GalaxyCatalog(object):
             if cosmo is None:
                 raise TypeError('Cosmology must be given if metric is "euclidean".')
             # Convert Celestial coordinate into Cartesian coordinate
-            dec, ra, z = self.catalog[:, :3].T
-            r = cosmo.z2r(z)
-            catalog = numpy.array([r*numpy.cos(dec)*numpy.cos(ra),
-                                   r*numpy.cos(dec)*numpy.sin(ra),
-                                   r*numpy.sin(dec),
-                                   self.catalog[:, 3]]).T
+            catalog = self.to_cartesian(cosmo)
             tree = KDTree(catalog[:, :3], leaf_size=leaf, metric='euclidean')
         elif metric == 'haversine':
             catalog = self.catalog[:, :-2]
@@ -291,7 +304,7 @@ class GalaxyCatalog(object):
         else:
             raise ValueError('Metric must be either "haversine" or "euclidean".')
 
-        print("- Creating BallTree with metric {}".format(metric))
+        print("    + Creating BallTree with metric {}".format(metric))
 
         # Return KD-tree and the catalog
         if return_catalog:
@@ -349,7 +362,7 @@ class RandomCatalog(object):
             node is guaranteed to satisfy leaf_size <= n_points <= 2*leaf_size,
             except in the case that n_samples < leaf_size.
             More details can be found at sklearn.neightbors.BallTree."""
-        print("- Creating BallTree")
+        print("    + Creating BallTree")
         balltree = BallTree(self.angular_distr[:, :2], leaf_size=leaf, metric='haversine')
         if return_catalog:
             return balltree, self.angular_distr

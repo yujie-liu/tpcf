@@ -36,44 +36,29 @@ def main():
             continue
         helper = next(load(fname))
 
-    if helper.cosmo is not None:
-        # If cosmology is set previously
-
+    if helper.n_cosmo == 1:
         # Calculate DD, DR, RR, and tpcf
         data_data = helper.get_dd()
         rand_rand, data_rand = helper.get_rr_dr()
         tpcf = Correlation(data_data, data_rand, rand_rand, helper.bins.bins('s'), helper.norm)
         tpcf_list = [tpcf]
     else:
-        # If cosmology is not set previously
-        loader = next(load('{}_preprocess.pkl'.format(args.prefix)))
-        data = loader['dd']
-
-        # Cosmological configuration parameter
-        if args.cosmology is None:
-            print('- Reading cosmological model from preprocess')
-            # Read in cosmology from preprocess
-            cosmo_list = loader['cosmo_list']
-        else:
-            print('- Reading cosmological model from configuration file {}'.format(args.cosmology))
-            # Read in cosmology from configuration file
-            config = configparser.SafeConfigParser()
-            config.read(args.cosmology)
-            cosmo_list = read_cosmology(config['COSMOLOGY'])
+        data = next(load('{}_preprocess.pkl'.format(args.prefix)))['dd']
+        rand_rand, data_rand = helper.get_rr_dr()
 
         # Calculate DD, DR, RR, and tpcf given cosmology
-        tpcf_list = [None]*len(cosmo_list)
-        for i, cosmo in enumerate(cosmo_list):
+        tpcf_list = [None]*helper.n_cosmo
+        for i, cosmo in enumerate(helper.cosmo_list):
             print('- Cosmology Model {}'.format(i+1))
 
+            # Calculate DD
             tree, catalog = data.build_balltree('euclidean', cosmo=cosmo, return_catalog=True)
             helper.set_dd(tree, catalog)
-
             data_data = helper.get_dd()
-            rand_rand, data_rand = helper.get_rr_dr(cosmo)
 
             # Set up and calculate correlation function
-            tpcf = Correlation(data_data, data_rand, rand_rand, helper.bins.bins('s'), helper.norm)
+            tpcf = Correlation(data_data, data_rand[i], rand_rand[i],
+                               helper.bins.bins('s'), helper.norm)
             tpcf_list[i] = tpcf
 
     # Save output

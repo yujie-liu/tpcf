@@ -55,11 +55,11 @@ class Bins(object):
         # Print out number of bins
         print('- Bin range: ')
         for key in sorted(self.limit.keys()):
-            print('     + {0:6s}: [{1:.5f}, {2:.5f}]'.format(key, self.min(key), self.max(key)))
+            print('    + {0:6s}: [{1:.5f}, {2:.5f}]'.format(key, self.min(key), self.max(key)))
 
         print('- Number of bins:')
         for key in sorted(self.num_bins.keys()):
-            print('     + {0:6s}: {1:4d}'.format(key, self.nbins(key)))
+            print('    + {0:6s}: {1:4d}'.format(key, self.nbins(key)))
 
     def __eq__(self, other):
         """ Comparing one bins with other """

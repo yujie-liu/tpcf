@@ -84,7 +84,7 @@ Example:
 
 The following command: 
 ```
-    python3 preprocess.py --config=/path/to/sample_config.cfg --prefix=sample_run --islice=0 --nslice=3 
+    python3 preprocess.py --config=/path/to/sample_conf.cfg --prefix=/path/to/sample_run --islice=0 --nslice=3 
 ```
 will use configuration file at "/path/to/sample_config.cfg". Divide catalogs into 3 redshift slice (z-slice) and process the first slice. The preprocess output will be "sample_run_preprocess.py". 
 
