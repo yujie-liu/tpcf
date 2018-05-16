@@ -49,8 +49,8 @@ def main():
 
     # Read in binning scheme
     num_bins = None if args.auto else config['NBINS']
-    bins = Bins(config['LIMIT'], num_bins=num_bins, islice=args.islice, nslice=args.nslice,
-                cosmo=cosmo_list, auto=args.auto, binw_s=args.binwidth)
+    bins = Bins(config['LIMIT'], cosmo_list, num_bins=num_bins,
+                islice=args.islice, nslice=args.nslice, auto=args.auto, binw_s=args.binwidth)
 
     # Initialize catalog and save dictionary
     print('- Initialize catalog')
